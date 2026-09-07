@@ -64,6 +64,7 @@ def bundle_info(app, commit, strict_contents=True):
     require(info.get("LSMinimumSystemVersion") == "26.5.1", "Unexpected macOS baseline.")
     require(re.fullmatch(r"\d+\.\d+\.\d+", info.get("CFBundleShortVersionString", "")), "Invalid version.")
     require(re.fullmatch(r"[1-9]\d*", info.get("CFBundleVersion", "")), "Invalid build number.")
+    require(os.access(app / "Contents/MacOS/Sparebar", os.X_OK), "App binary is not executable.")
     require(run("lipo", "-archs", app / "Contents/MacOS/Sparebar").strip() == "arm64", "App must be arm64 only.")
     run("codesign", "--verify", "--strict", app)
     return info
@@ -71,7 +72,7 @@ def bundle_info(app, commit, strict_contents=True):
 
 def archive(app, output):
     require(not output.exists(), "Artifact output already exists; choose a new directory.")
-    require(not run("git", "-C", ROOT, "status", "--porcelain", "--untracked-files=no").strip(), "Commit tracked changes before archiving a release build.")
+    require(not run("git", "-C", ROOT, "status", "--porcelain", "--untracked-files=all").strip(), "Commit all source changes before archiving a release build.")
     commit = run("git", "-C", ROOT, "rev-parse", "HEAD").strip()
     info = bundle_info(app, commit)
     output.mkdir(parents=True)
@@ -139,6 +140,14 @@ def signed(path, team, runtime=False):
         require(not entitlements or plistlib.loads(entitlements.encode()) == {}, "Release app has unexpected entitlements.")
 
 
+def stage_dmg(app, source):
+    source.mkdir()
+    # The distributed volume must not inherit the private working directory's mode.
+    source.chmod(0o755)
+    run("ditto", app, source / "Sparebar.app")
+    (source / "Applications").symlink_to("/Applications")
+
+
 def notarize(path, profile, work, label):
     print(f"Notarizing {label}...", flush=True)
     result = subprocess.run([
@@ -195,9 +204,7 @@ def prepare(args):
         run("xcrun", "stapler", "validate", app)
         run("spctl", "--assess", "--type", "execute", app)
         dmg_source = work / "dmg-source"
-        dmg_source.mkdir()
-        run("ditto", app, dmg_source / "Sparebar.app")
-        (dmg_source / "Applications").symlink_to("/Applications")
+        stage_dmg(app, dmg_source)
         filename = f"Sparebar-{manifest['version']}-arm64.dmg"
         dmg = work / filename
         run("hdiutil", "create", "-fs", "HFS+", "-format", "UDZO", "-volname", "Sparebar", "-srcfolder", dmg_source, dmg)

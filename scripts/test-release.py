@@ -3,11 +3,13 @@
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 import stat
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 import warnings
 import zipfile
 
@@ -89,6 +91,34 @@ class RunTests(unittest.TestCase):
                 record[field] = value
                 with self.assertRaises(release.ReleaseError):
                     release.verify_run(record, 42)
+
+
+class PackagingTests(unittest.TestCase):
+    def test_untracked_sources_cannot_claim_a_clean_commit(self):
+        with tempfile.TemporaryDirectory(prefix="sparebar-source-test-") as temporary:
+            repo = Path(temporary)
+            release.run("git", "init", "-q", "--initial-branch=fixture", repo)
+            release.run("git", "-C", repo, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "commit", "--allow-empty", "-qm", "fixture")
+            (repo / "Sources").mkdir()
+            (repo / "Sources/Unexpected.swift").write_text("// untracked source\n")
+            with patch.object(release, "ROOT", repo):
+                with self.assertRaisesRegex(release.ReleaseError, "source changes"):
+                    release.archive(repo / "Sparebar.app", repo / "artifact")
+
+    def test_dmg_payload_is_accessible_under_private_umask(self):
+        with tempfile.TemporaryDirectory(prefix="sparebar-permissions-test-") as temporary:
+            root = Path(temporary)
+            app = root / "Sparebar.app"
+            app.mkdir()
+            (app / "fixture").write_text("sample app")
+            previous = os.umask(0o077)
+            try:
+                source = root / "dmg-source"
+                release.stage_dmg(app, source)
+                self.assertEqual(stat.S_IMODE(source.stat().st_mode), 0o755)
+                self.assertEqual(os.readlink(source / "Applications"), "/Applications")
+            finally:
+                os.umask(previous)
 
 
 if __name__ == "__main__":
