@@ -102,7 +102,10 @@ public enum ProviderReader {
                 ])
                 _ = try codexRequest(
                     session, id: 1, method: "initialize",
-                    params: ["clientInfo": ["name": "sparebar", "version": "0.1.0"]])
+                    params: ["clientInfo": [
+                        "name": "sparebar",
+                        "version": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev",
+                    ]])
                 try session.send(["method": "initialized", "params": [:]])
                 let before = try Normalize.codexIdentity(
                     codexRequest(session, id: 2, method: "account/read", params: ["refreshToken": false]))

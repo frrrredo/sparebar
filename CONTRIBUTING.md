@@ -9,6 +9,8 @@ Small fixes, clearer errors, and compatibility reports are welcome. Open an issu
 
 CI builds and tests every pull request. The maintainer reviews and squash-merges into `main`; releases are separate.
 
+Maintainer: [release steps](docs/releasing.md).
+
 ## Keep it small
 
 - Use Swift and Apple frameworks. Discuss new dependencies first.
