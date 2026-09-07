@@ -2,12 +2,11 @@
 
 See what's left in Codex and Claude Code without opening either tool. One rotating macOS menu-bar slot keeps both allowances in view without taking over your menu bar.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/allowances-dark.jpg">
-  <img src="docs/images/allowances-light.jpg" width="360" alt="Sparebar showing Codex at 64% remaining and Claude at 18%, with a low allowance warning.">
-</picture>
+<img src="docs/images/menu-bar.png" width="182" alt="Sparebar in the macOS menu bar: Claude, a green gauge, and 94% remaining.">
 
-Actual app, sample allowances. [Settings screenshot](docs/images/settings.jpg).
+Five-second rotation, with sample allowances:
+
+<img src="docs/images/menu-bar-rotation.gif" width="182" alt="Sparebar sliding upward between Codex at 64% remaining and Claude at 18%, with a persistent low allowance warning.">
 
 ## Try it
 
@@ -34,6 +33,19 @@ First launch opens your allowances directly. Missing tools get a setup link. Mov
 Your official CLIs handle sign-in. Sparebar sends no model prompts, stores no credentials or usage history, and has no analytics or third-party package dependencies. [How reads work](docs/providers.md).
 
 Claude's usage control is experimental and can return cached readings. Tested with Codex 0.153.4 and Claude Code 2.1.263. Older macOS and Intel support can follow demand.
+
+## Screenshots
+
+Light and dark allowance panels. Native views, sample data, exported at 2x resolution.
+
+<p>
+  <img src="docs/images/allowances-light.png" width="332" alt="Light appearance: Codex at 64% remaining and Claude at 18%, with a low allowance warning.">
+  <img src="docs/images/allowances-dark.png" width="332" alt="Dark appearance with the same allowances and warning.">
+</p>
+
+Settings: optional launch at login, rotation, meter style, and connections.
+
+<img src="docs/images/settings.png" width="510" alt="Sparebar Settings with launch at login off, five-second rotation, bar style, remaining allowance, and both tools enabled.">
 
 ## Contribute
 
