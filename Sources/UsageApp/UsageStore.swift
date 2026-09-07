@@ -10,7 +10,7 @@ import UsageProviders
     @Published var now = Date()
     @Published var demo: Bool
     var statusChanged: (() -> Void)?
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
     private var reads: [Provider: Task<Void, Never>] = [:]
     private var revisions: [Provider: Int] = [:]
     private var refreshTimer: Task<Void, Never>?
@@ -19,8 +19,9 @@ import UsageProviders
     private var sleeping = false
     private var stopping = false
 
-    init(demo: Bool) {
+    init(demo: Bool, defaults: UserDefaults = .standard) {
         self.demo = demo
+        self.defaults = defaults
         let installed =
             demo
             ? Provider.allCases
@@ -28,7 +29,8 @@ import UsageProviders
                 CLIDiscovery.resolve($0, custom: preference("path.\($0.rawValue)")) != nil
             }
         defaults.register(defaults: [
-            "rotation": true, "interval": 5, "style": "bar", "remaining": true,
+            "rotation": true, "interval": 5, "style": "number", "remaining": true,
+            "showPercentage": true,
             "enabled.codex": installed.isEmpty || installed.contains(.codex),
             "enabled.claude": installed.isEmpty || installed.contains(.claude),
         ])
@@ -57,9 +59,13 @@ import UsageProviders
         [3, 5, 10, 15].contains(defaults.integer(forKey: "interval"))
             ? defaults.integer(forKey: "interval") : 5
     }
-    var style: String { defaults.string(forKey: "style") ?? "bar" }
+    var style: String { defaults.string(forKey: "style") ?? "number" }
     var showRemaining: Bool { defaults.bool(forKey: "remaining") }
+    var showPercentage: Bool { defaults.bool(forKey: "showPercentage") }
     var reducedMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+    var differentiateWithoutColor: Bool {
+        NSWorkspace.shared.accessibilityDisplayShouldDifferentiateWithoutColor
+    }
     var allChecking: Bool { states.values.contains { $0.checking } }
     var rotationLabel: String {
         if providers.count < 2 {
@@ -237,6 +243,7 @@ import UsageProviders
     func accessibilityChanged() {
         startRotation()
         objectWillChange.send()
+        statusChanged?()
     }
     func shutdown() async {
         stopping = true
