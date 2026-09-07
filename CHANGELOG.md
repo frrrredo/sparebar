@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.1.1 (unreleased)
+## 0.1.1
 
-Release tooling for signed, notarized DMGs from verified CI builds. Signing stays in the maintainer's local Keychain.
+First signed and Apple-notarized DMG, with checksums and source provenance. Built in CI; signing stays in the maintainer's local Keychain.
 
 ## 0.1.0
 

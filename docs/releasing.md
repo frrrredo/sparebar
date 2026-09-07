@@ -2,12 +2,15 @@
 
 CI tests and archives each `main` build. Release that exact archive; do not rebuild it locally. Signing and Apple credentials stay in your Mac's Keychain, outside public Actions jobs.
 
-You need Xcode command-line tools, Python 3, `gh`, and a personal Developer ID Application certificate. Save your notarization credentials once with Apple's interactive prompt:
+You need Xcode command-line tools, Python 3, `gh`, and a personal Developer ID Application certificate. Reuse a valid notarization Keychain profile if you have one. Otherwise, save an App Store Connect API key for the same developer team:
 
 ```sh
-xcrun notarytool store-credentials sparebar
+xcrun notarytool store-credentials sparebar \
+  --key PRIVATE_KEY_PATH --key-id KEY_ID --issuer ISSUER_ID
 security find-identity -v -p codesigning
 ```
+
+Apple ID authentication also works: use `--apple-id EMAIL --team-id TEAM_ID` instead of the key options. The secure prompt takes an app-specific password, and that Apple ID must belong to the signing team.
 
 1. Bump both versions in `Resources/Info.plist`, update the changelog, and merge through a PR.
 2. Choose the successful **push to main** CI run in Actions. Archives expire after 30 days.

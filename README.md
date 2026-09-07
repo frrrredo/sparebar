@@ -8,9 +8,18 @@ Native animation, sample allowances. Rotates every five seconds.
 
 ## Try it
 
-Early preview. Build from source for now; a notarized download will follow.
+**[Download Sparebar for Apple silicon](https://github.com/frrrredo/sparebar/releases/download/v0.1.1/Sparebar-0.1.1-arm64.dmg)** - signed and notarized, early preview.
 
-Requires Apple silicon, macOS 26.5.1 or newer, Xcode, and a signed-in [Codex CLI](https://learn.chatgpt.com/docs/cli) or [Claude Code](https://code.claude.com/docs/en/setup) subscription account.
+Open the DMG, drag Sparebar into Applications, then open it.
+
+Requires Apple silicon, macOS 26.5.1 or newer, and a signed-in [Codex CLI](https://learn.chatgpt.com/docs/cli) or [Claude Code](https://code.claude.com/docs/en/setup) subscription account.
+
+First launch opens your allowances directly. Missing tools get a setup link. **Launch at login** is optional in Settings.
+
+<details>
+<summary>Build from source</summary>
+
+Requires Xcode.
 
 ```sh
 git clone https://github.com/frrrredo/sparebar.git
@@ -19,7 +28,7 @@ cd sparebar
 open dist/Sparebar.app
 ```
 
-First launch opens your allowances directly. Missing tools get a setup link. Move the app to Applications if you want to enable **Launch at login** in Settings.
+</details>
 
 ## Small by design
 
