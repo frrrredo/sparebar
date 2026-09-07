@@ -17,44 +17,164 @@ struct MeterBar: View {
     }
 }
 
+@MainActor struct StatusLayout {
+    static let markerFont = NSFont.systemFont(ofSize: 11, weight: .semibold)
+    static let valueFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+    let style: String
+    var showPercentage = true
+    var differentiateWithoutColor = false
+    var hasProvider = true
+    var readings = ["100%"]
+    var markerWidth: CGFloat {
+        differentiateWithoutColor
+            ? ceil(("Cdx" as NSString).size(withAttributes: [.font: Self.markerFont]).width) + 4 : 0
+    }
+    var valueWidth: CGFloat {
+        showPercentage
+            ? ceil(
+                readings.map { ($0 as NSString).size(withAttributes: [.font: Self.valueFont]).width }.max()
+                    ?? 0)
+            : 0
+    }
+    var meterWidth: CGFloat { style == "number" ? 0 : style == "ring" ? 14 : 19 }
+    var iconWidth: CGFloat { 29 }
+    var width: CGFloat {
+        guard hasProvider else {
+            return ceil(("Sparebar" as NSString).size(withAttributes: [.font: Self.valueFont]).width)
+        }
+        return markerWidth + valueWidth + (showPercentage ? 3 : 0) + meterWidth + iconWidth
+    }
+}
+
+struct StatusAgent: View {
+    let color: Color
+    let eyeColor: Color
+    let amount: Double?
+    private let bodyHeight: CGFloat = 13 * 1.15
+    private var fraction: CGFloat { CGFloat(max(0, min(100, amount ?? 0))) / 100 }
+    private var battery: some View {
+        Image(systemName: "battery.0percent")
+            .resizable().symbolRenderingMode(.monochrome)
+            .font(.system(size: 14, weight: .light))
+            .frame(width: 26, height: bodyHeight)
+    }
+    private var terminal: some View {
+        battery.frame(width: 2.5, height: bodyHeight, alignment: .trailing).clipped()
+    }
+    private var eyes: some View {
+        HStack(spacing: 4.4) {
+            Rectangle().fill(eyeColor).frame(width: 3.825, height: 3.825)
+            Rectangle().fill(eyeColor).frame(width: 3.825, height: 3.825)
+        }.frame(width: 19, height: bodyHeight - 4)
+    }
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 1, style: .continuous)
+                    .fill(color)
+                    .mask(alignment: .leading) {
+                        Rectangle().frame(width: 19 * fraction)
+                    }
+                eyes
+            }.frame(width: 19, height: bodyHeight - 4).offset(x: 5, y: 2)
+            battery.offset(x: 3)
+            battery.scaleEffect(x: -1, y: 1)
+                .mask(alignment: .leading) { Rectangle().frame(width: 4) }
+            terminal.rotationEffect(.degrees(-90))
+                .frame(width: bodyHeight, height: 2.5).offset(x: (29 - bodyHeight) / 2, y: -2.5)
+        }
+        .foregroundStyle(Color.primary.opacity(0.6))
+        .frame(width: 29, height: bodyHeight, alignment: .topLeading)
+    }
+}
+
 struct StatusContent: View {
     @ObservedObject var store: UsageStore
+    @Environment(\.colorScheme) private var colorScheme
+    private var layout: StatusLayout {
+        StatusLayout(
+            style: store.style, showPercentage: store.showPercentage,
+            differentiateWithoutColor: store.differentiateWithoutColor,
+            hasProvider: store.current != nil, readings: store.providers.map(store.value))
+    }
+    private var severity: Severity { store.current.map(store.severity) ?? .unavailable }
+    private var foreground: Color {
+        switch severity {
+        case .normal: .primary
+        case .unavailable: .secondary
+        case .low:
+            colorScheme == .dark
+                ? Color(red: 0.98, green: 0.75, blue: 0.33)
+                : Color(red: 0.62, green: 0.35, blue: 0.04)
+        case .critical:
+            colorScheme == .dark
+                ? Color(red: 1, green: 0.50, blue: 0.45)
+                : Color(red: 0.76, green: 0.18, blue: 0.19)
+        }
+    }
+    private func markerColor(_ provider: Provider) -> Color {
+        if provider == .codex {
+            return colorScheme == .dark
+                ? Color(red: 0.40, green: 0.68, blue: 1)
+                : Color(red: 0.10, green: 0.36, blue: 0.70)
+        }
+        return colorScheme == .dark
+            ? Color(red: 0.94, green: 0.58, blue: 0.40)
+            : Color(red: 0.66, green: 0.30, blue: 0.17)
+    }
     var body: some View {
-        HStack(spacing: 5) {
-            ZStack {
-                if let provider = store.current {
-                    HStack(spacing: 5) {
-                        Text(provider.name).font(.system(size: 12, weight: .medium)).frame(
-                            width: 43, alignment: .leading)
+        ZStack {
+            if let provider = store.current {
+                HStack(spacing: 0) {
+                    if store.differentiateWithoutColor {
+                        Text(provider == .codex ? "Cdx" : "Cld")
+                            .font(Font(StatusLayout.markerFont)).foregroundStyle(markerColor(provider))
+                            .frame(width: layout.markerWidth, alignment: .leading)
+                            .transaction { $0.animation = nil }
+                    }
+                    HStack(spacing: 3) {
+                        if store.showPercentage {
+                            Text(store.value(provider))
+                                .underline(store.differentiateWithoutColor && severity >= .low)
+                                .frame(width: layout.valueWidth, alignment: .trailing)
+                                .contentTransition(.identity).transaction { $0.animation = nil }
+                        }
                         if store.style == "ring" {
                             ZStack {
-                                Circle().stroke(.primary.opacity(0.18), lineWidth: 2.5)
-                                Circle().trim(from: 0, to: (store.displayAmount(provider) ?? 0) / 100)
-                                    .stroke(
-                                        store.severity(provider).color,
-                                        style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
-                                    ).rotationEffect(.degrees(-90))
-                            }.frame(width: 15, height: 15)
+                                Circle().strokeBorder(.primary.opacity(0.18), lineWidth: 2)
+                                Circle().inset(by: 1).trim(
+                                    from: 0, to: (store.displayAmount(provider) ?? 0) / 100
+                                )
+                                .stroke(
+                                    foreground, style: StrokeStyle(lineWidth: 2, lineCap: .round)
+                                ).rotationEffect(.degrees(-90))
+                            }.frame(width: 11, height: 11).transaction { $0.animation = nil }
                         } else if store.style != "number" {
-                            MeterBar(
-                                value: store.displayAmount(provider), color: store.severity(provider).color
-                            ).frame(width: 20, height: 6)
+                            MeterBar(value: store.displayAmount(provider), color: foreground)
+                                .frame(width: 16, height: 4).transaction { $0.animation = nil }
                         }
-                        Text(store.value(provider)).font(.system(size: 12, weight: .medium)).monospacedDigit()
-                            .frame(width: store.style == "number" ? 55 : 32, alignment: .trailing)
-                    }.frame(width: 111).id(provider)
-                        .transition(
-                            .asymmetric(
-                                insertion: .move(edge: .bottom).combined(with: .opacity),
-                                removal: .move(edge: .top).combined(with: .opacity)))
-                } else {
-                    Text("Sparebar").font(.system(size: 12)).frame(width: 111)
+                        ZStack {
+                            StatusAgent(
+                                color: markerColor(provider), eyeColor: provider == .codex ? .white : .black,
+                                amount: store.displayAmount(provider)
+                            )
+                            .id(provider)
+                            .transition(
+                                .asymmetric(
+                                    insertion: .move(edge: .bottom).combined(with: .opacity),
+                                    removal: .move(edge: .top).combined(with: .opacity)))
+                        }.frame(width: layout.iconWidth, height: 22).clipped()
+                    }
+                    .frame(height: 18)
                 }
-            }.frame(width: 111, height: 22).clipped()
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 10, weight: .medium)).foregroundStyle(store.warning.color)
-                .opacity(store.warning == .normal ? 0 : 1).frame(width: 13)
-        }.padding(.horizontal, 7).frame(width: 144, height: 24).accessibilityHidden(true)
+                .frame(width: layout.width, alignment: .leading)
+            } else {
+                Text("Sparebar")
+            }
+        }
+        .font(Font(StatusLayout.valueFont)).foregroundStyle(foreground)
+        .frame(width: layout.width, height: 22).clipped()
+        .frame(height: 24).accessibilityHidden(true)
     }
 }
 
@@ -194,6 +314,11 @@ struct PopoverContent: View {
                     Image(systemName: "chevron.right")
                 }.accessibilityLabel("Show next tool").disabled(store.providers.count < 2)
                 Menu {
+                    Toggle(
+                        "Show Percentage",
+                        isOn: Binding(
+                            get: { store.showPercentage }, set: { store.set($0, for: "showPercentage") }))
+                    Divider()
                     Button("About Sparebar") { NSApp.orderFrontStandardAboutPanel() }
                     Divider()
                     Button("Quit Sparebar", action: quit).keyboardShortcut("q")
@@ -308,18 +433,22 @@ struct SettingsContent: View {
                     ForEach([3, 5, 10, 15], id: \.self) { Text("\($0) seconds").tag($0) }
                 }.disabled(!store.rotating)
                 Picker(
-                    "Meter style",
+                    "Extra meter",
                     selection: Binding(get: { store.style }, set: { store.set($0, for: "style") })
                 ) {
                     Text("Bar").tag("bar")
                     Text("Gauge").tag("ring")
-                    Text("Percentage").tag("number")
+                    Text("None").tag("number")
                 }.pickerStyle(.segmented)
+                Toggle(
+                    "Show Percentage",
+                    isOn: Binding(
+                        get: { store.showPercentage }, set: { store.set($0, for: "showPercentage") }))
                 Toggle(
                     "Show remaining allowance",
                     isOn: Binding(get: { store.showRemaining }, set: { store.set($0, for: "remaining") }))
                 Text(
-                    "Amber at 20% remaining; red at 10%. Warnings use remaining allowance even when percentages show used."
+                    "Blue fill is Codex; orange is Claude. Its fill matches the percentage and empties from right to left. Hover for the full name. The reading turns amber at 20% remaining and red at 10%, even when percentages show used."
                 ).font(.caption).foregroundStyle(.secondary)
             }
             Section("Connections") {

@@ -9,6 +9,7 @@ import SwiftUI
     private let store = UsageStore(demo: CommandLine.arguments.contains("--demo"))
     private var status: NSStatusItem!
     private let popover = NSPopover()
+    private var allowanceWindow: AllowanceWindow?
     private var settingsWindow: NSWindow?
     private var observers: [NSObjectProtocol] = []
 
@@ -24,10 +25,15 @@ import SwiftUI
         }
         installMenu()
         if CommandLine.arguments.contains("--demo-light") { NSApp.appearance = NSAppearance(named: .aqua) }
-        status = NSStatusBar.system.statusItem(withLength: 144)
+        let statusWidth = StatusLayout(
+            style: store.style, showPercentage: store.showPercentage,
+            differentiateWithoutColor: store.differentiateWithoutColor,
+            hasProvider: store.current != nil, readings: store.providers.map(store.value)
+        ).width
+        status = NSStatusBar.system.statusItem(withLength: statusWidth)
         if let button = status.button {
             let host = PassthroughHostingView(rootView: StatusContent(store: store))
-            host.frame = NSRect(x: 0, y: 0, width: 144, height: button.bounds.height)
+            host.frame = NSRect(x: 0, y: 0, width: statusWidth, height: button.bounds.height)
             host.autoresizingMask = [.width, .height]
             button.addSubview(host)
             button.target = self
@@ -44,7 +50,7 @@ import SwiftUI
             .preferredColorScheme(CommandLine.arguments.contains("--demo-light") ? .light : nil))
         content.sizingOptions = [.preferredContentSize]
         popover.contentViewController = content
-        store.statusChanged = { [weak self] in self?.updateAccessibility() }
+        store.statusChanged = { [weak self] in self?.updateStatus() }
         observeWorkspace(NSWorkspace.willSleepNotification) { $0.store.sleep() }
         observeWorkspace(NSWorkspace.didWakeNotification) { $0.store.wake() }
         observeWorkspace(NSWorkspace.accessibilityDisplayOptionsDidChangeNotification) {
@@ -53,11 +59,14 @@ import SwiftUI
         observers.append(
             DistributedNotificationCenter.default().addObserver(
                 forName: .init("Sparebar.show"), object: nil, queue: .main
-            ) { [weak self] _ in Task { @MainActor in self?.showPopover() } })
+            ) { [weak self] _ in Task { @MainActor in self?.showAllowancesWindow() } })
         store.start()
-        updateAccessibility()
+        updateStatus()
         let firstLaunch = !UserDefaults.standard.bool(forKey: "onboarded")
-        if firstLaunch || CommandLine.arguments.contains("--show") {
+        if CommandLine.arguments.contains("--show") {
+            showAllowancesWindow()
+            UserDefaults.standard.set(true, forKey: "onboarded")
+        } else if firstLaunch {
             showPopover()
             UserDefaults.standard.set(true, forKey: "onboarded")
         }
@@ -96,7 +105,13 @@ import SwiftUI
         edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
         NSApp.mainMenu = main
     }
-    private func updateAccessibility() {
+    private func updateStatus() {
+        let width = StatusLayout(
+            style: store.style, showPercentage: store.showPercentage,
+            differentiateWithoutColor: store.differentiateWithoutColor,
+            hasProvider: store.current != nil, readings: store.providers.map(store.value)
+        ).width
+        if status?.length != width { status?.length = width }
         let label =
             store.current.map { provider in
                 let value =
@@ -113,7 +128,16 @@ import SwiftUI
         if popover.isShown { popover.performClose(nil) } else { showPopover() }
     }
     private func showPopover() {
-        guard let button = status?.button else { return }
+        if allowanceWindow?.window.isVisible == true {
+            allowanceWindow?.show()
+            return
+        }
+        guard let button = status?.button, let window = button.window,
+            window.isVisible, window.occlusionState.contains(.visible)
+        else {
+            showAllowancesWindow()
+            return
+        }
         NSApp.activate(ignoringOtherApps: true)
         store.popoverOpen = true
         if let content = popover.contentViewController {
@@ -123,9 +147,28 @@ import SwiftUI
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         popover.contentViewController?.view.window?.makeKey()
     }
-    func popoverDidClose(_ notification: Notification) { store.popoverOpen = false }
+    private func showAllowancesWindow() {
+        popover.performClose(nil)
+        if allowanceWindow == nil {
+            allowanceWindow = AllowanceWindow(
+                content: PopoverContent(
+                    store: store, showSettings: { [weak self] in self?.showSettings() },
+                    quit: { NSApp.terminate(nil) }
+                )
+                .preferredColorScheme(CommandLine.arguments.contains("--demo-light") ? .light : nil),
+                readingChanged: { [weak self] reading in
+                    guard let self else { return }
+                    self.store.popoverOpen = reading || self.popover.isShown
+                })
+        }
+        allowanceWindow?.show()
+    }
+    func popoverDidClose(_ notification: Notification) {
+        store.popoverOpen = allowanceWindow?.window.isVisible == true
+    }
     @objc private func showSettings() {
         popover.performClose(nil)
+        allowanceWindow?.close()
         if settingsWindow == nil {
             let window = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 510, height: 650),
@@ -140,7 +183,7 @@ import SwiftUI
         settingsWindow?.makeKeyAndOrderFront(nil)
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        showPopover()
+        showAllowancesWindow()
         return false
     }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
