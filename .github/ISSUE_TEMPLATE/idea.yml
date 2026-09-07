@@ -1,0 +1,14 @@
+name: Idea
+description: A small improvement or compatibility request.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would this help you do?
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested change
+      description: How could it fit without making the app harder to use?

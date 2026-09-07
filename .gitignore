@@ -1,0 +1,26 @@
+.DS_Store
+.build/
+dist/
+.playwright-mcp/
+.impeccable/hook.cache.json
+.impeccable/config.local.json
+
+# Local product planning and design-tool state.
+/PRODUCT.md
+/DESIGN.md
+/.impeccable/
+/demos/
+
+# Local handoff and personal investigation snapshots are not public fixtures.
+/PROJECT_HANDOFF.md
+/docs/usage-investigation.md
+/docs/usage-investigation-evidence.json
+
+# Private signing material must never be source controlled.
+*.p12
+*.p8
+*.key
+*.keychain-db
+.env
+.env.*
+!.env.example
