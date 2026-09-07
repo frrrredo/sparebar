@@ -2,7 +2,7 @@
 
 See what's left in Codex and Claude Code without opening either tool. One rotating macOS menu-bar slot keeps both allowances in view without taking over your menu bar.
 
-<img src="docs/images/menu-bar.png" width="182" alt="Sparebar in the macOS menu bar: Claude, a green gauge, and 94% remaining.">
+<img src="docs/images/menu-bar.png" width="655" alt="Sparebar showing Codex at 82% remaining alongside macOS battery, Wi-Fi, sound, Spotlight, Control Center, and clock controls.">
 
 Five-second rotation, with sample allowances:
 
