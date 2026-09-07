@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 (unreleased)
+
+Release tooling for signed, notarized DMGs from verified CI builds. Signing stays in the maintainer's local Keychain.
+
 ## 0.1.0
 
 First public preview. Codex and Claude Code allowances in one rotating menu-bar slot, with low-allowance warnings, meter selection, light/dark appearance, and optional launch at login.
