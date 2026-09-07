@@ -153,11 +153,15 @@ struct UsageTests {
         let session = try LineProcess(
             executable: "/bin/sh", arguments: ["-c", "trap 'wait; exit' TERM; sleep 30 & echo $!; wait"],
             environment: ["PATH": "/bin:/usr/bin"], directory: "/tmp", timeout: 3)
+        defer { session.stop() }
         let child = try #require(
             Int32(
                 String(decoding: try session.line(), as: UTF8.self).trimmingCharacters(
                     in: .whitespacesAndNewlines)))
         session.stop()
+        // stop() reaps the direct child; descendant PIDs can disappear shortly afterward.
+        let deadline = Date().addingTimeInterval(2)
+        while kill(child, 0) == 0, Date() < deadline { usleep(10_000) }
         #expect(kill(child, 0) == -1)
         #expect(errno == ESRCH)
     }
