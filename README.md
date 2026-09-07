@@ -2,11 +2,9 @@
 
 See what's left in Codex and Claude Code without opening either tool. One rotating macOS menu-bar slot keeps both allowances in view without taking over your menu bar.
 
-<img src="docs/images/menu-bar.png" width="655" alt="Sparebar showing Codex at 82% remaining alongside macOS battery, Wi-Fi, sound, Spotlight, Control Center, and clock controls.">
+<img src="docs/images/menu-bar.gif" width="655" alt="Sparebar sliding between Codex at 64% remaining and Claude at 18%, beside the stationary macOS battery, Wi-Fi, sound, Spotlight, Control Center, and clock controls.">
 
-Five-second rotation, with sample allowances:
-
-<img src="docs/images/menu-bar-rotation.gif" width="182" alt="Sparebar sliding upward between Codex at 64% remaining and Claude at 18%, with a persistent low allowance warning.">
+Native animation, sample allowances. Rotates every five seconds.
 
 ## Try it
 
@@ -35,6 +33,10 @@ Your official CLIs handle sign-in. Sparebar sends no model prompts, stores no cr
 Claude's usage control is experimental and can return cached readings. Tested with Codex 0.153.4 and Claude Code 2.1.263. Older macOS and Intel support can follow demand.
 
 ## Screenshots
+
+Menu bar, still:
+
+<img src="docs/images/menu-bar.png" width="655" alt="Sparebar showing Codex at 82% remaining alongside the macOS menu-bar controls.">
 
 Light and dark allowance panels. Native views, sample data, exported at 2x resolution.
 
