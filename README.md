@@ -8,7 +8,7 @@ Native views with sample allowances, composited beside macOS controls. Rotates e
 
 ## Try it
 
-**[Download Sparebar for Apple silicon](https://github.com/frrrredo/sparebar/releases/download/v0.1.2/Sparebar-0.1.2-arm64.dmg)** - signed and notarized, early preview.
+**[Download Sparebar for Apple silicon](https://github.com/frrrredo/sparebar/releases/download/v0.1.3/Sparebar-0.1.3-arm64.dmg)** - signed and notarized, early preview.
 
 Open the DMG, drag Sparebar into Applications, then open it.
 
