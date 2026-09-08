@@ -50,8 +50,11 @@ struct StatusAgent: View {
     let color: Color
     let eyeColor: Color
     let amount: Double?
+    var health: ServiceHealthLevel = .operational
+    var healthSignal: ServiceHealthSignal?
+    var reducedMotion = false
+    var consumeHealthSignal: () -> Bool = { true }
     private let bodyHeight: CGFloat = 13 * 1.15
-    private var fraction: CGFloat { CGFloat(max(0, min(100, amount ?? 0))) / 100 }
     private var battery: some View {
         Image(systemName: "battery.0percent")
             .resizable().symbolRenderingMode(.monochrome)
@@ -62,19 +65,15 @@ struct StatusAgent: View {
         battery.frame(width: 2.5, height: bodyHeight, alignment: .trailing).clipped()
     }
     private var eyes: some View {
-        HStack(spacing: 4.4) {
-            Rectangle().fill(eyeColor).frame(width: 3.825, height: 3.825)
-            Rectangle().fill(eyeColor).frame(width: 3.825, height: 3.825)
-        }.frame(width: 19, height: bodyHeight - 4)
+        ServiceHealthEyes(level: health, color: eyeColor, signal: healthSignal, reducedMotion: reducedMotion,
+                          consumeSignal: consumeHealthSignal)
+            .frame(width: 19, height: bodyHeight - 4)
     }
     var body: some View {
         ZStack(alignment: .topLeading) {
             ZStack {
                 RoundedRectangle(cornerRadius: 1, style: .continuous)
                     .fill(color)
-                    .mask(alignment: .leading) {
-                        Rectangle().frame(width: 19 * fraction)
-                    }
                 eyes
             }.frame(width: 19, height: bodyHeight - 4).offset(x: 5, y: 2)
             battery.offset(x: 3)
@@ -157,7 +156,11 @@ struct StatusContent: View {
                         ZStack {
                             StatusAgent(
                                 color: markerColor(provider), eyeColor: provider == .codex ? .white : .black,
-                                amount: store.displayAmount(provider)
+                                amount: store.displayAmount(provider),
+                                health: store.health.level(provider, at: store.now),
+                                healthSignal: store.health.states[provider]?.signal,
+                                reducedMotion: store.reducedMotion,
+                                consumeHealthSignal: { store.health.consumeSignal(provider) }
                             )
                             .id(provider)
                             .transition(
@@ -315,6 +318,10 @@ struct PopoverContent: View {
             if updates.visible {
                 UpdatePanel(updates: updates, showDetails: { showingNotes = true })
                     .padding(.horizontal, 15).padding(.bottom, 13)
+                Divider().padding(.bottom, 10)
+            }
+            if !store.providers.isEmpty {
+                ServiceHealthPanel(store: store)
                 Divider().padding(.bottom, 10)
             }
             HStack {
@@ -491,8 +498,11 @@ struct SettingsContent: View {
                     "Show remaining allowance",
                     isOn: Binding(get: { store.showRemaining }, set: { store.set($0, for: "remaining") }))
                 Text(
-                    "Blue fill is Codex; orange is Claude. Its fill matches the percentage and empties from right to left. Hover for the full name. The reading turns amber at 20% remaining and red at 10%, even when percentages show used."
+                    "Blue is Codex; orange is Claude. The eyes show service health; the percentage and extra meter show allowance. Hover for details. The reading turns amber at 20% remaining and red at 10%, even when percentages show used."
                 ).font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Service health") {
+                ServiceHealthExplanation()
             }
             Section("Updates") {
                 Toggle(

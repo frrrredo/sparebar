@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.4
+
+- Report OpenAI and Claude service incidents in the existing popup, with affected services, official status links, and separate allowance readings. Status checks run directly from the Mac about every five minutes while awake.
+- Use a full provider-colored robot face with centered eyes: squares for normal service, thin lines for degradation, crosses for an outage, and muted lines for unconfirmed status.
+- Add gentle incident alerts and ten-minute outage reminders until acknowledged. A brief happy-eye blink marks recovery before normal eyes return. Reduce Motion keeps the eyes still.
+- Explain service health in Settings with an eye-shape legend, polling timing, and recovery behavior. Add native sample screenshots and a plain-language guide.
+
 ## 0.1.3
 
 - Automatic updates download in the background and install when Sparebar quits, with no forced restart. One Settings switch controls this; daily checks continue when it is off.

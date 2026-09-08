@@ -1,16 +1,16 @@
 # Sparebar
 
-See what's left in Codex and Claude Code without opening either tool. One rotating macOS menu-bar slot keeps both allowances in view without taking over your menu bar.
+See what's left in Codex and Claude Code, and whether their providers report service problems. One rotating macOS menu-bar slot keeps allowances and service health in view.
 
-<img src="docs/images/menu-bar.gif" width="555" alt="Sparebar's blue and orange robot slides between Codex at 64% remaining and Claude at 18%, with the percentage updating in place beside macOS controls.">
+<img src="docs/images/service-health-dark.png" width="332" alt="Sparebar reporting a sample Claude Code outage above separate Codex and Claude allowance readings.">
 
-Native views with sample allowances, composited beside macOS controls. Rotates every five seconds.
+Native view with synthetic service reports and sample allowances.
 
 ## Try it
 
-**[Download Sparebar for Apple silicon](https://github.com/frrrredo/sparebar/releases/download/v0.1.3/Sparebar-0.1.3-arm64.dmg)** - signed and notarized, early preview.
+**[Download Sparebar for Apple silicon](https://github.com/frrrredo/sparebar/releases)** - signed and notarized, early preview.
 
-Open the DMG, drag Sparebar into Applications, then open it.
+Choose the DMG from the newest release, open it, drag Sparebar into Applications, then open Sparebar.
 
 Requires Apple silicon, macOS 26.5.1 or newer, and a signed-in [Codex CLI](https://learn.chatgpt.com/docs/cli) or [Claude Code](https://code.claude.com/docs/en/setup) subscription account.
 
@@ -34,7 +34,7 @@ open dist/Sparebar.app
 
 - Rotates between tools; opening the panel pauses it.
 - Weekly, session, and model allowances when available.
-- Percentage beside a battery-shaped robot with a system-colored outline and square eyes. Blue fill is Codex; orange is Claude. Its fill matches the number and drains from right to left. Only the robot slides during rotation; digits update in place. Optional bar or gauge; hover for the full name.
+- Percentage beside a compact robot with a system-colored outline. Its full blue face identifies Codex; orange identifies Claude. Eyes show service health; percentage and optional bar or gauge show allowance. Only the robot slides during rotation; digits update in place. Hover for the tool name and reported service status.
 - Remaining by default, used if you prefer. Readings turn amber at 20% left and red at 10%; the tool's color stays fixed. Missing readings show `--`.
 - **Show Percentage** is on by default. Turn it off in the panel's **More options** menu or Settings to hide the number; the preference is saved.
 - Checks for updates once a day. **Automatic updates** is on by default: new versions download in the background and install when you quit. Sparebar never restarts itself unexpectedly.
@@ -48,22 +48,38 @@ Versions through 0.1.2 need one manual installation of an updater-enabled releas
 
 Claude's usage control is experimental and can return cached readings. Tested with Codex 0.153.4 and Claude Code 2.1.263. Older macOS and Intel support can follow demand.
 
-## Screenshots
+## Service health
 
-Menu bar, still:
+Keep an eye on your allowance and the services behind it.
 
-<img src="docs/images/menu-bar.png" width="555" alt="Sparebar showing 64% remaining beside a blue battery-shaped robot with white square eyes, alongside macOS controls.">
+Service health is included from version 0.1.4. Sparebar reads public service reports for OpenAI and Claude about every five minutes while your Mac is awake. The robot's full blue or orange face identifies the provider; its eyes show normal service, degradation, an outage, or unconfirmed status. Percentage and optional meters still show your allowance.
 
-Light and dark allowance panels. Native views, sample data, exported at 2x resolution.
+Open the panel to see which service is affected and follow the official status link for details. A gentle pulse marks a new incident, with ten-minute outage reminders until you open the panel. Happy eyes briefly mark recovery. Reduce Motion keeps the eyes still. These public status checks require no extra account or API key.
+
+| Eyes | Meaning |
+| --- | --- |
+| Squares | No service incidents reported. |
+| Thin lines | Degraded service or maintenance reported. |
+| Crosses | An outage is reported for at least one service. |
+| Muted lines | Service status could not be confirmed. |
+
+**Settings > Service health** keeps this explanation close at hand. Provider reports describe shared services; they do not replace your allowance reading or diagnose your Mac's connection.
+
+[Read how service reports work](docs/providers.md#service-status).
+
+Native preview with synthetic service reports and sample allowances:
 
 <p>
-  <img src="docs/images/allowances-light.png" width="332" alt="Light appearance: Codex at 64% remaining and Claude at 18%, with a low allowance warning.">
-  <img src="docs/images/allowances-dark.png" width="332" alt="Dark appearance with the same allowances and warning.">
+  <img src="docs/images/service-health-light.png" width="332" alt="Light appearance: a reported Claude Code outage beside separate Codex and Claude allowances.">
+  <img src="docs/images/service-health-dark.png" width="332" alt="Dark appearance: the same sample outage with affected service, official status link, and independent allowances.">
 </p>
 
-Settings: optional launch at login, rotation, Show Percentage, extra meter, and connections.
+The service-health guide in Settings, shown in light and dark appearances:
 
-<img src="docs/images/settings.png" width="510" alt="Sparebar Settings with launch at login off, five-second rotation, Show Percentage enabled, no extra meter, remaining allowance, and both tools enabled.">
+<p>
+  <img src="docs/images/service-health-settings-light.png" width="400" alt="Light Settings view with the four service-health eye shapes and a plain-language explanation of checks and recovery.">
+  <img src="docs/images/service-health-settings-dark.png" width="400" alt="Dark Settings view with the same service-health guide.">
+</p>
 
 ## Contribute
 

@@ -6,9 +6,12 @@ import UsageProviders
 @MainActor final class UsageStore: ObservableObject {
     @Published var states = Dictionary(uniqueKeysWithValues: Provider.allCases.map { ($0, ProviderState()) })
     @Published var currentIndex = 0
-    @Published var popoverOpen = false
+    @Published var popoverOpen = false {
+        didSet { health.reading = popoverOpen }
+    }
     @Published var now = Date()
     @Published var demo: Bool
+    let health: ServiceHealthController
     var statusChanged: (() -> Void)?
     private let defaults: UserDefaults
     private var reads: [Provider: Task<Void, Never>] = [:]
@@ -22,6 +25,7 @@ import UsageProviders
     init(demo: Bool, defaults: UserDefaults = .standard) {
         self.demo = demo
         self.defaults = defaults
+        self.health = ServiceHealthController(demo: demo)
         let installed =
             demo
             ? Provider.allCases
@@ -50,6 +54,12 @@ import UsageProviders
                         .init(provider: provider, accountKey: "demo", allowances: meters),
                         executable: "Sample data", version: "Demo"))
             }
+        }
+        health.onChange = { [weak self] in
+            guard let self else { return }
+            self.objectWillChange.send()
+            self.now = Date()
+            self.statusChanged?()
         }
     }
     var providers: [Provider] { Provider.allCases.filter { defaults.bool(forKey: "enabled.\($0.rawValue)") } }
@@ -86,6 +96,7 @@ import UsageProviders
     }
     func setEnabled(_ value: Bool, provider: Provider) {
         set(value, for: "enabled.\(provider.rawValue)")
+        health.setProviders(providers)
         if value {
             states[provider]?.lastAttempt = nil
             refresh(provider)
@@ -148,6 +159,7 @@ import UsageProviders
         statusChanged?()
     }
     func start() {
+        health.start(providers: providers)
         startRotation()
         if !demo { refreshAll() }
         clockTimer = Task { [weak self] in
@@ -228,12 +240,14 @@ import UsageProviders
     }
     func sleep() {
         sleeping = true
+        health.sleep()
         refreshTimer?.cancel()
         rotationTimer?.cancel()
         for task in reads.values { task.cancel() }
     }
     func wake() {
         sleeping = false
+        health.wake()
         now = Date()
         startRotation()
         for provider in providers { states[provider]?.lastAttempt = nil }
@@ -247,6 +261,7 @@ import UsageProviders
     }
     func shutdown() async {
         stopping = true
+        await health.shutdown()
         refreshTimer?.cancel()
         rotationTimer?.cancel()
         clockTimer?.cancel()

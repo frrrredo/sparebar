@@ -1,7 +1,9 @@
-Sparebar keeps itself fresh - one less thing to remember.
+Your robot now keeps an eye on service outages.
 
-New versions download in the background and install when you quit. Sparebar never restarts on its own.
+Sparebar checks official OpenAI and Claude status pages about every five minutes while your Mac is awake, for the tools you have enabled.
 
-A small orange dot lets you know an update is available. Open Sparebar to see what's new and choose Update and Restart whenever it suits you.
+The robot's eyes tell the story: squares mean no incidents reported, thin lines mean degraded service, crosses mean an outage, and muted lines mean status is unconfirmed. Open the panel to see affected services and their official status pages. The percentage still shows your allowance.
 
-Prefer to choose each download? Turn off Automatic updates in Settings. Sparebar will still check once a day and let you know when something new is ready.
+A gentle blink marks a new incident. Outage reminders stop after you open the panel, and happy eyes briefly celebrate recovery. Reduce Motion keeps the eyes still.
+
+Find the eye-shape guide and polling details in Settings under Service health. No extra account, API key, or model calls are needed.

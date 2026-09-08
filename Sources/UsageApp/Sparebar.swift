@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UsageCore
 
 @MainActor final class PassthroughHostingView<Content: View>: NSHostingView<Content> {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
@@ -68,6 +69,16 @@ import SwiftUI
         if CommandLine.arguments.contains("--demo-update") { updates.showDemoUpdate() }
         if CommandLine.arguments.contains("--demo-update-ready") { updates.showDemoUpdate(phase: .ready) }
         if CommandLine.arguments.contains("--demo-update-error") { updates.showDemoUpdate(phase: .failed) }
+        if store.demo, let index = CommandLine.arguments.firstIndex(of: "--demo-health"),
+            CommandLine.arguments.indices.contains(index + 1) {
+            let level: UsageCore.ServiceHealthLevel = switch CommandLine.arguments[index + 1] {
+            case "degraded": .degraded
+            case "outage": .outage
+            case "unknown": .unknown
+            default: .operational
+            }
+            store.health.showDemo(.claude, level: level)
+        }
         updateStatus()
         let firstLaunch = !UserDefaults.standard.bool(forKey: "onboarded")
         if store.demo && CommandLine.arguments.contains("--show-popover") {
@@ -131,7 +142,7 @@ import SwiftUI
                     ? "\(store.value(provider)) \(store.showRemaining ? "remaining" : "used")"
                     : "allowance unavailable"
                 return
-                    "Sparebar. \(provider.name), \(store.meter(provider)?.label ?? "allowance"), \(value). \(store.warningText)"
+                    "Sparebar. \(provider.name), \(store.meter(provider)?.label ?? "allowance"), \(value). \(store.warningText) \(store.health.tooltip(provider, at: store.now))"
             } ?? "Sparebar. Open settings to choose a tool."
         let fullLabel = updates.hasUpdate ? "\(label) \(updates.tooltip)" : label
         status?.button?.setAccessibilityLabel(fullLabel)
