@@ -16,7 +16,7 @@ public enum ServiceHealthLevel: Int, Equatable, Sendable {
         switch componentStatus {
         case "operational": self = .operational
         case "degraded_performance", "under_maintenance": self = .degraded
-        case "partial_outage", "major_outage": self = .outage
+        case "partial_outage", "major_outage", "full_outage": self = .outage
         default: self = .unknown
         }
     }
@@ -27,7 +27,9 @@ extension Provider {
     public var statusURL: URL {
         URL(string: self == .codex ? "https://status.openai.com/" : "https://status.claude.com/")!
     }
-    public var statusFeedURL: URL { statusURL.appending(path: "api/v2/summary.json") }
+    public var statusFeedURL: URL {
+        statusURL.appending(path: self == .codex ? "proxy/status.openai.com" : "api/v2/summary.json")
+    }
 }
 
 public struct ServiceComponent: Decodable, Equatable, Sendable, Identifiable {
@@ -47,10 +49,15 @@ public struct ServiceComponent: Decodable, Equatable, Sendable, Identifiable {
 }
 
 public struct ServiceIncident: Decodable, Equatable, Sendable, Identifiable {
+    public struct ComponentReference: Decodable, Equatable, Sendable {
+        public let id: String
+    }
     public let id: String
     public let name: String
     public let status: String
     public let impact: String
+    public let components: [ComponentReference]?
+    public var componentIDs: Set<String> { Set((components ?? []).map(\.id)) }
     public var active: Bool { !["resolved", "postmortem"].contains(status) }
     public var displayName: String { serviceText(name, limit: 180) }
     public var level: ServiceHealthLevel {
@@ -62,11 +69,12 @@ public struct ServiceIncident: Decodable, Equatable, Sendable, Identifiable {
         default: return .unknown
         }
     }
-    public init(id: String, name: String, status: String, impact: String) {
+    public init(id: String, name: String, status: String, impact: String, componentIDs: Set<String> = []) {
         self.id = id
         self.name = name
         self.status = status
         self.impact = impact
+        self.components = componentIDs.sorted().map { .init(id: $0) }
     }
 }
 
@@ -79,10 +87,14 @@ public struct ServiceHealthSnapshot: Equatable, Sendable {
     public let components: [ServiceComponent]
     public let incidents: [ServiceIncident]
     public let indicator: String?
+    public let groups: [WatchedService]
+    public let unscopedIncidents: [ServiceIncident]
+    public let scopeIncomplete: Bool
     public var affected: [ServiceComponent] { components.filter { $0.level.hasIncident } }
     public var level: ServiceHealthLevel {
         guard !components.isEmpty || !incidents.isEmpty else { return .unknown }
         var levels = components.map(\.level) + incidents.map(\.level)
+        if scopeIncomplete || !unscopedIncidents.isEmpty { levels.append(.unknown) }
         if let indicator {
             let rollup: ServiceHealthLevel = switch indicator {
             case "none": .operational
@@ -97,10 +109,15 @@ public struct ServiceHealthSnapshot: Equatable, Sendable {
         if levels.contains(.degraded) { return .degraded }
         return levels.isEmpty || levels.contains(.unknown) ? .unknown : .operational
     }
-    public init(components: [ServiceComponent], incidents: [ServiceIncident] = [], indicator: String? = nil) {
+    public init(components: [ServiceComponent], incidents: [ServiceIncident] = [], indicator: String? = nil,
+                groups: [WatchedService] = [],
+                unscopedIncidents: [ServiceIncident] = [], scopeIncomplete: Bool = false) {
         self.components = components.filter { $0.group != true }
         self.incidents = incidents.filter(\.active)
         self.indicator = indicator
+        self.groups = groups
+        self.unscopedIncidents = unscopedIncidents.filter(\.active)
+        self.scopeIncomplete = scopeIncomplete
     }
     public init(data: Data) throws {
         struct Document: Decodable {
@@ -192,6 +209,14 @@ public struct ServiceHealthState: Sendable {
         failed = true
         failures = min(failures + 1, 10)
         signal = nil
+    }
+    /// A preference edit reuses the last result without becoming a new check or recovery.
+    public mutating func reproject(_ filtered: ServiceHealthSnapshot?) {
+        snapshot = filtered
+        confirmed = filtered.flatMap { $0.level == .unknown ? nil : $0 }
+        signal = nil
+        nextReminder = nil
+        acknowledged = true
     }
     public mutating func acknowledge() {
         acknowledged = true

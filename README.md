@@ -56,11 +56,15 @@ Service health is included from version 0.1.4. Sparebar reads public service rep
 
 Open the panel to see which service is affected and follow the official status link for details. A gentle pulse marks a new incident, with ten-minute outage reminders until you open the panel. Happy eyes briefly mark recovery. Reduce Motion keeps the eyes still. These public status checks require no extra account or API key.
 
+From version 0.1.5, **Settings > Service health > Choose...** lets you select services independently for OpenAI and Claude. ChatGPT, Codex, claude.ai, and Claude Code start enabled; APIs, developer consoles, government services, Claude Cowork, and Ads Platform start off. Your choices are saved. Only selected services affect the eyes and panel, so an unrelated government or API incident stays out of your way.
+
+Clear all choices for a provider to stop its service checks. Allowance readings continue independently. Changing the selection uses the last report immediately, without an extra request or a recovery celebration. Reports that do not identify the affected services clearly remain unconfirmed.
+
 | Eyes | Meaning |
 | --- | --- |
-| Squares | No service incidents reported. |
+| Squares | No incidents reported for selected services. |
 | Thin lines | Degraded service or maintenance reported. |
-| Crosses | An outage is reported for at least one service. |
+| Crosses | An outage is reported for at least one selected service. |
 | Muted lines | Service status could not be confirmed. |
 
 **Settings > Service health** keeps this explanation close at hand. Provider reports describe shared services; they do not replace your allowance reading or diagnose your Mac's connection.
@@ -74,11 +78,11 @@ Native preview with synthetic service reports and sample allowances:
   <img src="docs/images/service-health-dark.png" width="332" alt="Dark appearance: the same sample outage with affected service, official status link, and independent allowances.">
 </p>
 
-The service-health guide in Settings, shown in light and dark appearances:
+The service choices and eye-shape guide inside Settings (sample data):
 
 <p>
-  <img src="docs/images/service-health-settings-light.png" width="400" alt="Light Settings view with the four service-health eye shapes and a plain-language explanation of checks and recovery.">
-  <img src="docs/images/service-health-settings-dark.png" width="400" alt="Dark Settings view with the same service-health guide.">
+  <img src="docs/images/service-filters-light.png" width="400" alt="Light native Settings with independent OpenAI and Claude service choices.">
+  <img src="docs/images/service-filters-dark.png" width="400" alt="Dark native Settings with Claude's own service checklist and the eye-shape guide.">
 </p>
 
 ## Contribute

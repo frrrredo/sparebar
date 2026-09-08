@@ -151,6 +151,34 @@ private actor PendingStatusReads {
 }
 
 @MainActor struct ServiceHealthLifecycleTests {
+    @Test func editingFiltersReusesPollingAndEmptySelectionCancelsIt() async throws {
+        let name = "Sparebar-filter-polling-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defer { defaults.removePersistentDomain(forName: name) }
+        let reads = PendingStatusReads()
+        let controller = ServiceHealthController(demo: false, defaults: defaults,
+            read: { try await reads.read($0) }, jitter: { 0 })
+        controller.start(providers: [.claude])
+        for _ in 0..<100 where await reads.total < 1 { try await Task.sleep(for: .milliseconds(10)) }
+        controller.select("chat", for: .claude, enabled: false)
+        controller.select("cowork", for: .claude, enabled: true)
+        try await Task.sleep(for: .milliseconds(20))
+        #expect(await reads.total == 1)
+        #expect(await reads.cancellations == 0)
+        controller.select("code", for: .claude, enabled: false)
+        controller.select("cowork", for: .claude, enabled: false)
+        for _ in 0..<100 where await reads.cancellations < 1 { try await Task.sleep(for: .milliseconds(10)) }
+        controller.wake()
+        try await Task.sleep(for: .milliseconds(20))
+        #expect(await reads.total == 1)
+        #expect(await reads.cancellations == 1)
+        controller.select("chat", for: .claude, enabled: true)
+        for _ in 0..<100 where await reads.total < 2 { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(await reads.total == 2)
+        await controller.shutdown()
+        #expect(await reads.cancellations == 2)
+    }
+
     @Test func sleepDisableAndShutdownCancelRequestsAndWakeStartsOnePerProvider() async throws {
         let reads = PendingStatusReads()
         let controller = ServiceHealthController(demo: false, read: { try await reads.read($0) }, jitter: { 0 })

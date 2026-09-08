@@ -25,7 +25,7 @@ import UsageProviders
     init(demo: Bool, defaults: UserDefaults = .standard) {
         self.demo = demo
         self.defaults = defaults
-        self.health = ServiceHealthController(demo: demo)
+        self.health = ServiceHealthController(demo: demo, defaults: defaults)
         let installed =
             demo
             ? Provider.allCases

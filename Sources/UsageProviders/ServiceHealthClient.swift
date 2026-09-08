@@ -52,7 +52,7 @@ public actor ServiceHealthClient {
             guard data.count < Self.maximumBytes else { throw ServiceHealthError.responseTooLarge }
             data.append(byte)
         }
-        let snapshot = try ServiceHealthSnapshot(data: data)
+        let snapshot = provider == .codex ? try OpenAIServiceHealth.decode(data) : try ServiceHealthSnapshot(data: data)
         cached[provider] = (snapshot, response.value(forHTTPHeaderField: "ETag"))
         return snapshot
     }
