@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.3 (unreleased)
+## 0.1.3
 
 - Automatic updates download in the background and install when Sparebar quits, with no forced restart. One Settings switch controls this; daily checks continue when it is off.
 - An orange dot, short release summary, and Update and Restart action appear in the existing panel. Full notes open behind an information button, with Back to return.
