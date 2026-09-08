@@ -6,11 +6,19 @@
     <key>CFBundleExecutable</key><string>Sparebar</string>
     <key>CFBundleIdentifier</key><string>io.github.frrrredo.sparebar</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.1.2</string>
-    <key>CFBundleVersion</key><string>3</string>
+    <key>CFBundleShortVersionString</key><string>0.1.3</string>
+    <key>CFBundleVersion</key><string>4</string>
     <key>CFBundleIconFile</key><string>Sparebar</string>
     <key>LSMinimumSystemVersion</key><string>26.5.1</string>
     <key>LSUIElement</key><true/>
     <key>NSHighResolutionCapable</key><true/>
+    <key>SUFeedURL</key><string>https://raw.githubusercontent.com/frrrredo/sparebar/updates/appcast.xml</string>
+    <key>SUPublicEDKey</key><string>D7MfNytuPmJwrT9cAfZlV/VH67wDQa/V4TzI4bpkmA8=</string>
+    <key>SUEnableAutomaticChecks</key><true/>
+    <key>SUScheduledCheckInterval</key><real>86400</real>
+    <key>SUAutomaticallyUpdate</key><true/>
+    <key>SUAllowsAutomaticUpdates</key><true/>
+    <key>SUSendProfileInfo</key><false/>
+    <key>SUVerifyUpdateBeforeExtraction</key><true/>
     <key>NSHumanReadableCopyright</key><string>Copyright 2026 Sparebar contributors. Apache License 2.0.</string>
 </dict></plist>

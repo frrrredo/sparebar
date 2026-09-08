@@ -7,6 +7,7 @@ import SwiftUI
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private let store = UsageStore(demo: CommandLine.arguments.contains("--demo"))
+    private let updates = UpdateController(demo: CommandLine.arguments.contains("--demo"))
     private var status: NSStatusItem!
     private let popover = NSPopover()
     private var allowanceWindow: AllowanceWindow?
@@ -32,7 +33,7 @@ import SwiftUI
         ).width
         status = NSStatusBar.system.statusItem(withLength: statusWidth)
         if let button = status.button {
-            let host = PassthroughHostingView(rootView: StatusContent(store: store))
+            let host = PassthroughHostingView(rootView: StatusContent(store: store, updates: updates))
             host.frame = NSRect(x: 0, y: 0, width: statusWidth, height: button.bounds.height)
             host.autoresizingMask = [.width, .height]
             button.addSubview(host)
@@ -44,13 +45,15 @@ import SwiftUI
         popover.delegate = self
         let content = NSHostingController(
             rootView: PopoverContent(
-                store: store, showSettings: { [weak self] in self?.showSettings() },
+                store: store, updates: updates, showSettings: { [weak self] in self?.showSettings() },
                 quit: { NSApp.terminate(nil) }
             )
             .preferredColorScheme(CommandLine.arguments.contains("--demo-light") ? .light : nil))
         content.sizingOptions = [.preferredContentSize]
         popover.contentViewController = content
         store.statusChanged = { [weak self] in self?.updateStatus() }
+        updates.statusChanged = { [weak self] in self?.updateStatus() }
+        updates.present = { [weak self] in self?.showPopover() }
         observeWorkspace(NSWorkspace.willSleepNotification) { $0.store.sleep() }
         observeWorkspace(NSWorkspace.didWakeNotification) { $0.store.wake() }
         observeWorkspace(NSWorkspace.accessibilityDisplayOptionsDidChangeNotification) {
@@ -61,9 +64,15 @@ import SwiftUI
                 forName: .init("Sparebar.show"), object: nil, queue: .main
             ) { [weak self] _ in Task { @MainActor in self?.showAllowancesWindow() } })
         store.start()
+        updates.start()
+        if CommandLine.arguments.contains("--demo-update") { updates.showDemoUpdate() }
+        if CommandLine.arguments.contains("--demo-update-ready") { updates.showDemoUpdate(phase: .ready) }
+        if CommandLine.arguments.contains("--demo-update-error") { updates.showDemoUpdate(phase: .failed) }
         updateStatus()
         let firstLaunch = !UserDefaults.standard.bool(forKey: "onboarded")
-        if CommandLine.arguments.contains("--show") {
+        if store.demo && CommandLine.arguments.contains("--show-popover") {
+            showPopover()
+        } else if CommandLine.arguments.contains("--show") {
             showAllowancesWindow()
             UserDefaults.standard.set(true, forKey: "onboarded")
         } else if firstLaunch {
@@ -92,6 +101,9 @@ import SwiftUI
         let settings = menu.addItem(
             withTitle: "Settings...", action: #selector(showSettings), keyEquivalent: ",")
         settings.target = self
+        let check = menu.addItem(
+            withTitle: "Check for Updates...", action: #selector(checkForUpdates), keyEquivalent: "")
+        check.target = self
         menu.addItem(.separator())
         menu.addItem(
             withTitle: "Quit Sparebar", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -121,9 +133,11 @@ import SwiftUI
                 return
                     "Sparebar. \(provider.name), \(store.meter(provider)?.label ?? "allowance"), \(value). \(store.warningText)"
             } ?? "Sparebar. Open settings to choose a tool."
-        status?.button?.setAccessibilityLabel(label)
-        status?.button?.toolTip = label
+        let fullLabel = updates.hasUpdate ? "\(label) \(updates.tooltip)" : label
+        status?.button?.setAccessibilityLabel(fullLabel)
+        status?.button?.toolTip = fullLabel
     }
+    @objc private func checkForUpdates() { updates.check() }
     @objc private func togglePopover() {
         if popover.isShown { popover.performClose(nil) } else { showPopover() }
     }
@@ -152,7 +166,7 @@ import SwiftUI
         if allowanceWindow == nil {
             allowanceWindow = AllowanceWindow(
                 content: PopoverContent(
-                    store: store, showSettings: { [weak self] in self?.showSettings() },
+                    store: store, updates: updates, showSettings: { [weak self] in self?.showSettings() },
                     quit: { NSApp.terminate(nil) }
                 )
                 .preferredColorScheme(CommandLine.arguments.contains("--demo-light") ? .light : nil),
@@ -175,7 +189,7 @@ import SwiftUI
                 styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
             window.title = "Sparebar Settings"
             window.isReleasedWhenClosed = false
-            window.contentView = NSHostingView(rootView: SettingsContent(store: store))
+            window.contentView = NSHostingView(rootView: SettingsContent(store: store, updates: updates))
             window.center()
             settingsWindow = window
         }

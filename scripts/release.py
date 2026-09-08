@@ -2,6 +2,7 @@
 """Archive a CI build, or notarize that exact build using a local Keychain."""
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -13,6 +14,9 @@ import subprocess
 import sys
 import tempfile
 import zipfile
+import xml.etree.ElementTree as ET
+
+import sparkle_bundle
 
 REPO = "frrrredo/sparebar"
 ROOT = Path(__file__).resolve().parent.parent
@@ -21,7 +25,14 @@ FILES = {
     "Contents/Info.plist", "Contents/MacOS/Sparebar",
     "Contents/Resources/LICENSE", "Contents/Resources/Sparebar.icns",
     "Contents/_CodeSignature/CodeResources",
+    "Contents/Resources/Sparkle-LICENSE", "Contents/Resources/ReleaseNotes.txt",
 }
+FRAMEWORK = sparkle_bundle.FRAMEWORK
+SPARKLE = sparkle_bundle.inventory()
+FILES |= {f"{FRAMEWORK}/{path}" for path in SPARKLE["files"]}
+LINKS = {f"{FRAMEWORK}/{path}": target for path, target in SPARKLE["links"].items()}
+SPARKLE_NS = "http://www.andymatuschak.org/xml-namespaces/sparkle"
+ET.register_namespace("sparkle", SPARKLE_NS)
 
 
 class ReleaseError(Exception):
@@ -53,8 +64,10 @@ def api(path):
 
 def bundle_info(app, commit, strict_contents=True):
     require(app.is_dir() and not app.is_symlink(), "Expected a real Sparebar.app directory.")
-    files = {str(path.relative_to(app)) for path in app.rglob("*") if path.is_file()}
-    require(not any(path.is_symlink() for path in app.rglob("*")), "App contains a link.")
+    files = {str(path.relative_to(app)) for path in app.rglob("*") if path.is_file() and not path.is_symlink()}
+    links = {str(path.relative_to(app)): os.readlink(path) for path in app.rglob("*") if path.is_symlink()}
+    require(links == LINKS, "App contains an unexpected link.")
+    require(all((app / path).resolve().is_relative_to((app / FRAMEWORK).resolve()) for path in links), "Framework link escapes its bundle.")
     if strict_contents:
         require(files == FILES, "Unexpected app contents.")
     with (app / "Contents/Info.plist").open("rb") as stream:
@@ -66,7 +79,7 @@ def bundle_info(app, commit, strict_contents=True):
     require(re.fullmatch(r"[1-9]\d*", info.get("CFBundleVersion", "")), "Invalid build number.")
     require(os.access(app / "Contents/MacOS/Sparebar", os.X_OK), "App binary is not executable.")
     require(run("lipo", "-archs", app / "Contents/MacOS/Sparebar").strip() == "arm64", "App must be arm64 only.")
-    run("codesign", "--verify", "--strict", app)
+    run("codesign", "--verify", "--deep", "--strict", app)
     return info
 
 
@@ -102,8 +115,8 @@ def verify_artifact(directory, commit):
     archive_path = directory / "Sparebar.zip"
     require(archive_path.stat().st_size < 64 * 1024 * 1024, "Archive is too large.")
     require(digest(archive_path) == manifest["archive_sha256"], "Archive checksum mismatch.")
-    expected = {"Sparebar.app/" + path for path in FILES}
-    directories = {"Sparebar.app/", "Sparebar.app/Contents/", "Sparebar.app/Contents/MacOS/", "Sparebar.app/Contents/Resources/", "Sparebar.app/Contents/_CodeSignature/"}
+    expected = {"Sparebar.app/" + path for path in FILES | LINKS.keys()}
+    directories = {str(parent) + "/" for path in expected for parent in Path(path).parents if str(parent) != "."}
     with zipfile.ZipFile(archive_path) as zipped:
         entries = zipped.infolist()
         require(len({entry.filename for entry in entries}) == len(entries), "Duplicate archive entries.")
@@ -111,7 +124,12 @@ def verify_artifact(directory, commit):
         require({entry.filename for entry in entries if not entry.is_dir()} == expected, "Unexpected archive paths.")
         for entry in entries:
             mode = stat.S_IFMT(entry.external_attr >> 16)
-            require(mode in (0, stat.S_IFREG, stat.S_IFDIR), "Archive contains a link or special file.")
+            relative = entry.filename.removeprefix("Sparebar.app/")
+            if relative in LINKS:
+                require(mode == stat.S_IFLNK and entry.file_size < 256, "Invalid framework link.")
+                require(zipped.read(entry).decode("utf-8") == LINKS[relative], "Unexpected framework link target.")
+            else:
+                require(mode in (0, stat.S_IFREG, stat.S_IFDIR), "Archive contains a link or special file.")
             require(entry.filename in expected | directories, "Unsafe archive path.")
         require(zipped.testzip() is None, "Archive data is corrupt.")
     return manifest
@@ -194,6 +212,9 @@ def prepare(args):
         info = bundle_info(app, commit)
         require(info["CFBundleShortVersionString"] == manifest["version"] and info["CFBundleVersion"] == manifest["build"], "App version does not match its manifest.")
         print(f"Signing CI run {args.run_id}, commit {commit} (no rebuild).", flush=True)
+        sparkle_bundle.sign(app, args.identity, timestamp=True)
+        for relative in sparkle_bundle.NESTED_CODE:
+            signed(app / FRAMEWORK / relative, args.team_id)
         run("codesign", "--force", "--timestamp", "--options", "runtime", "--sign", args.identity, app)
         signed(app, args.team_id, runtime=True)
         app_zip = work / "notary-app.zip"
@@ -231,9 +252,42 @@ def prepare(args):
         manifest.update(ci_run_id=args.run_id, ci_run_attempt=record["run_attempt"], dmg_sha256=digest(dmg), developer_team=args.team_id, app_submission=app_submission, dmg_submission=dmg_submission)
         output.mkdir(parents=True)
         (output / filename).write_bytes(dmg.read_bytes())
+        write_appcast(output / "appcast.xml", dmg, manifest, app, args.sparkle_account)
         (output / "SHA256SUMS").write_text(f"{manifest['dmg_sha256']}  {filename}\n")
         (output / "release.json").write_text(json.dumps(manifest, indent=2) + "\n")
         print(f"Verified notarized release: {output}")
+
+
+def write_appcast(destination, dmg, manifest, app, account):
+    """Sign the finished DMG, then describe those immutable bytes in the update feed."""
+    signer = sparkle_bundle.ARTIFACT / "bin/sign_update"
+    key_tool = sparkle_bundle.ARTIFACT / "bin/generate_keys"
+    public_key = run(key_tool, "--account", account, "-p").strip()
+    with (app / "Contents/Info.plist").open("rb") as stream:
+        info = plistlib.load(stream)
+    require(public_key == info.get("SUPublicEDKey"), "Sparkle signing key does not match the archived app.")
+    signature = run(signer, "--account", account, "-p", dmg).strip()
+    require(len(base64.b64decode(signature, validate=True)) == 64, "Invalid update signature.")
+    run(signer, "--account", account, "--verify", dmg, signature)
+    notes = (app / "Contents/Resources/ReleaseNotes.txt").read_text().strip()
+    require(0 < len(notes) <= 12_000 and len(notes.splitlines()[0]) <= 180, "Release notes need a short first line and at most 12000 characters.")
+    root = ET.Element("rss", version="2.0")
+    channel = ET.SubElement(root, "channel")
+    ET.SubElement(channel, "title").text = "Sparebar updates"
+    item = ET.SubElement(channel, "item")
+    ET.SubElement(item, "title").text = f"Sparebar {manifest['version']}"
+    ET.SubElement(item, "description", {f"{{{SPARKLE_NS}}}format": "plain-text"}).text = notes
+    ET.SubElement(item, f"{{{SPARKLE_NS}}}version").text = manifest["build"]
+    ET.SubElement(item, f"{{{SPARKLE_NS}}}shortVersionString").text = manifest["version"]
+    ET.SubElement(item, f"{{{SPARKLE_NS}}}minimumSystemVersion").text = manifest["minimum_macos"]
+    ET.SubElement(item, "enclosure", {
+        "url": f"https://github.com/{REPO}/releases/download/v{manifest['version']}/{dmg.name}",
+        "length": str(dmg.stat().st_size), "type": "application/octet-stream",
+        f"{{{SPARKLE_NS}}}edSignature": signature,
+    })
+    ET.indent(root)
+    destination.write_bytes(ET.tostring(root, encoding="utf-8", xml_declaration=True) + b"\n")
+    manifest["appcast_sha256"] = digest(destination)
 
 
 def main():
@@ -251,6 +305,7 @@ def main():
     release.add_argument("--team-id", required=True)
     release.add_argument("--notary-profile", required=True)
     release.add_argument("--output", type=Path)
+    release.add_argument("--sparkle-account", default="sparebar")
     args = parser.parse_args()
     try:
         os.umask(0o077)

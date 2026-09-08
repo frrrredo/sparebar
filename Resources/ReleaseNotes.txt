@@ -1,0 +1,7 @@
+Sparebar keeps itself fresh - one less thing to remember.
+
+New versions download in the background and install when you quit. Sparebar never restarts on its own.
+
+A small orange dot lets you know an update is available. Open Sparebar to see what's new and choose Update and Restart whenever it suits you.
+
+Prefer to choose each download? Turn off Automatic updates in Settings. Sparebar will still check once a day and let you know when something new is ready.
