@@ -3,6 +3,22 @@
   <channel>
     <title>Sparebar updates</title>
     <item>
+      <title>Sparebar 0.1.4</title>
+      <description sparkle:format="plain-text">Your robot now keeps an eye on service outages.
+
+Sparebar checks official OpenAI and Claude status pages about every five minutes while your Mac is awake, for the tools you have enabled.
+
+The robot's eyes tell the story: squares mean no incidents reported, thin lines mean degraded service, crosses mean an outage, and muted lines mean status is unconfirmed. Open the panel to see affected services and their official status pages. The percentage still shows your allowance.
+
+A gentle blink marks a new incident. Outage reminders stop after you open the panel, and happy eyes briefly celebrate recovery. Reduce Motion keeps the eyes still.
+
+Find the eye-shape guide and polling details in Settings under Service health. No extra account, API key, or model calls are needed.</description>
+      <sparkle:version>5</sparkle:version>
+      <sparkle:shortVersionString>0.1.4</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>26.5.1</sparkle:minimumSystemVersion>
+      <enclosure url="https://github.com/frrrredo/sparebar/releases/download/v0.1.4/Sparebar-0.1.4-arm64.dmg" length="1696466" type="application/octet-stream" sparkle:edSignature="Ax3jwg82N3lrCdLwmzsEnn1ZyIPf88nEANLwD5ZPhJnt2BZOu7adc0OjESZaeHGokrG4hb4x/niQ7JExdB//Dg==" />
+    </item>
+    <item>
       <title>Sparebar 0.1.3</title>
       <description sparkle:format="plain-text">Sparebar keeps itself fresh - one less thing to remember.
 
