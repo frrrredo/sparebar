@@ -2,6 +2,7 @@
 """Exercise the boundaries before an artifact can reach local signing."""
 
 import importlib.util
+import base64
 import json
 import os
 from pathlib import Path
@@ -12,11 +13,15 @@ import unittest
 from unittest.mock import patch
 import warnings
 import zipfile
+import xml.etree.ElementTree as ET
 
 sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location("release", Path(__file__).with_name("release.py"))
 release = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(release)
+feed_spec = importlib.util.spec_from_file_location("publish_feed", Path(__file__).with_name("publish-feed.py"))
+feed = importlib.util.module_from_spec(feed_spec)
+feed_spec.loader.exec_module(feed)
 COMMIT = "a" * 40
 
 
@@ -35,6 +40,10 @@ class ArtifactTests(unittest.TestCase):
                 if mode and filename == "Contents/MacOS/Sparebar":
                     entry.external_attr = mode << 16
                 zipped.writestr(entry, b"synthetic fixture")
+            for filename, target in release.LINKS.items():
+                entry = zipfile.ZipInfo("Sparebar.app/" + filename)
+                entry.external_attr = (stat.S_IFLNK | 0o755) << 16
+                zipped.writestr(entry, target.encode())
             if extra:
                 zipped.writestr(extra, b"not app content")
             if duplicate:
@@ -91,6 +100,58 @@ class RunTests(unittest.TestCase):
                 record[field] = value
                 with self.assertRaises(release.ReleaseError):
                     release.verify_run(record, 42)
+
+
+class FeedTests(unittest.TestCase):
+    def item(self, version="0.1.3", build="4"):
+        ns = feed.NS
+        root = ET.Element("rss", version="2.0")
+        channel = ET.SubElement(root, "channel")
+        ET.SubElement(channel, "title").text = "Sparebar updates"
+        item = ET.SubElement(channel, "item")
+        ET.SubElement(item, "title").text = f"Sparebar {version}"
+        ET.SubElement(item, "description", {f"{{{ns}}}format": "plain-text"}).text = "Less clicking.\n\nUser-friendly details."
+        ET.SubElement(item, f"{{{ns}}}version").text = build
+        ET.SubElement(item, f"{{{ns}}}shortVersionString").text = version
+        ET.SubElement(item, f"{{{ns}}}minimumSystemVersion").text = "26.5.1"
+        ET.SubElement(item, "enclosure", {"url": f"https://github.com/{feed.REPO}/releases/download/v{version}/Sparebar-{version}-arm64.dmg",
+                     "length": "123456", f"{{{ns}}}edSignature": base64.b64encode(bytes(64)).decode()})
+        ET.indent(root)
+        return ET.tostring(root)
+
+    def test_first_feed_and_retry_are_identical(self):
+        incoming = self.item()
+        first = feed.merge_feed(None, incoming, "v0.1.3")
+        self.assertEqual(feed.merge_feed(first, incoming, "v0.1.3"), first)
+
+    def test_out_of_order_publication_never_downgrades_latest(self):
+        newer = feed.merge_feed(None, self.item("0.1.4", "5"), "v0.1.4")
+        merged = feed.merge_feed(newer, self.item(), "v0.1.3")
+        items = feed.validate_feed(merged)[2]
+        self.assertEqual([i.findtext(f"{{{feed.NS}}}version") for i in items], ["5", "4"])
+
+    def test_existing_build_cannot_be_replaced(self):
+        first = feed.merge_feed(None, self.item(), "v0.1.3")
+        changed = self.item().replace(b"123456", b"654321")
+        with self.assertRaisesRegex(ValueError, "already exists"):
+            feed.merge_feed(first, changed, "v0.1.3")
+
+    def test_untrusted_links_or_unsigned_updates_are_rejected(self):
+        cases = [self.item().replace(b"github.com/frrrredo", b"example.com/frrrredo"),
+                 self.item().replace(base64.b64encode(bytes(64)), b"invalid"),
+                 self.item().replace(b"plain-text", b"text/html"),
+                 b'<!DOCTYPE rss [<!ENTITY x "unsafe">]>' + self.item()]
+        for data in cases:
+            with self.subTest(data=data[:40]), self.assertRaises(ValueError):
+                feed.validate_feed(data, "v0.1.3")
+
+    def test_wrong_release_tag_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "does not match"):
+            feed.validate_feed(self.item(), "v0.1.4")
+
+    def test_unexpected_metadata_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "metadata"):
+            feed.validate_feed(self.item().replace(b"</item>", b"<link>https://example.com</link></item>"))
 
 
 class PackagingTests(unittest.TestCase):

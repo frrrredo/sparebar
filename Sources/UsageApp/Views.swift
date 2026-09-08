@@ -90,6 +90,7 @@ struct StatusAgent: View {
 
 struct StatusContent: View {
     @ObservedObject var store: UsageStore
+    @ObservedObject var updates: UpdateController
     @Environment(\.colorScheme) private var colorScheme
     private var layout: StatusLayout {
         StatusLayout(
@@ -174,6 +175,15 @@ struct StatusContent: View {
         }
         .font(Font(StatusLayout.valueFont)).foregroundStyle(foreground)
         .frame(width: layout.width, height: 22).clipped()
+        .overlay(alignment: .topTrailing) {
+            if updates.hasUpdate {
+                Circle().fill(.orange)
+                    .overlay { Circle().stroke(Color(nsColor: .windowBackgroundColor), lineWidth: 1) }
+                    .frame(width: 5, height: 5).padding(.top, 1).padding(.trailing, 1)
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .animation(store.reducedMotion ? nil : .easeOut(duration: 0.2), value: updates.hasUpdate)
         .frame(height: 24).accessibilityHidden(true)
     }
 }
@@ -259,9 +269,35 @@ struct AllowanceRow: View {
 
 struct PopoverContent: View {
     @ObservedObject var store: UsageStore
+    @ObservedObject var updates: UpdateController
     let showSettings: () -> Void
     let quit: () -> Void
+    @State private var showingNotes = false
     var body: some View {
+        Group {
+            if showingNotes {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Button {
+                            showingNotes = false
+                        } label: {
+                            Label("Back", systemImage: "chevron.left")
+                        }.buttonStyle(.borderless)
+                        Spacer()
+                        Text("What's new").fontWeight(.medium)
+                    }
+                    ScrollView {
+                        Text(updates.releaseNotes).font(.system(size: 12))
+                            .frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
+                    }.frame(height: 210)
+                    UpdatePanel(updates: updates)
+                }.padding(15).frame(width: 332).background(Color(nsColor: .windowBackgroundColor))
+            } else {
+                allowances
+            }
+        }
+    }
+    private var allowances: some View {
         VStack(spacing: 0) {
             HStack(spacing: 7) {
                 Image(systemName: "chart.bar.fill").font(.system(size: 16))
@@ -276,6 +312,11 @@ struct PopoverContent: View {
                 Button(action: showSettings) { Image(systemName: "slider.horizontal.3") }.help("Settings")
                     .accessibilityLabel("Settings")
             }.buttonStyle(.borderless).padding(.horizontal, 15).padding(.top, 16).padding(.bottom, 13)
+            if updates.visible {
+                UpdatePanel(updates: updates, showDetails: { showingNotes = true })
+                    .padding(.horizontal, 15).padding(.bottom, 13)
+                Divider().padding(.bottom, 10)
+            }
             HStack {
                 Text("Allowance")
                 Spacer()
@@ -319,6 +360,7 @@ struct PopoverContent: View {
                         isOn: Binding(
                             get: { store.showPercentage }, set: { store.set($0, for: "showPercentage") }))
                     Divider()
+                    Button("Check for Updates...") { updates.check() }.disabled(updates.busy || store.demo)
                     Button("About Sparebar") { NSApp.orderFrontStandardAboutPanel() }
                     Divider()
                     Button("Quit Sparebar", action: quit).keyboardShortcut("q")
@@ -402,6 +444,7 @@ struct ConnectionEditor: View {
 
 struct SettingsContent: View {
     @ObservedObject var store: UsageStore
+    @ObservedObject var updates: UpdateController
     @StateObject private var loginItem = LoginItem()
     var body: some View {
         Form {
@@ -450,6 +493,31 @@ struct SettingsContent: View {
                 Text(
                     "Blue fill is Codex; orange is Claude. Its fill matches the percentage and empties from right to left. Hover for the full name. The reading turns amber at 20% remaining and red at 10%, even when percentages show used."
                 ).font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Updates") {
+                Toggle(
+                    "Automatic updates",
+                    isOn: Binding(
+                        get: { updates.automaticUpdates }, set: { updates.setAutomaticUpdates($0) }
+                    )
+                ).disabled(store.demo)
+                Text(
+                    "Downloads updates in the background and installs them when you quit. Sparebar won't restart on its own."
+                )
+                .font(.caption).foregroundStyle(.secondary)
+                if !updates.automaticUpdates && updates.phase == .ready {
+                    Text("The prepared update will still install when you quit.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                HStack {
+                    Text("Checks once a day, even when automatic updates are off.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Check Now") { updates.check() }.disabled(updates.busy || store.demo)
+                }
+                if updates.phase == .failed {
+                    Text(updates.message).font(.caption).foregroundStyle(.secondary)
+                }
             }
             Section("Connections") {
                 ForEach(Provider.allCases) { ConnectionEditor(store: store, provider: $0) }

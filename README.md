@@ -37,10 +37,14 @@ open dist/Sparebar.app
 - Percentage beside a battery-shaped robot with a system-colored outline and square eyes. Blue fill is Codex; orange is Claude. Its fill matches the number and drains from right to left. Only the robot slides during rotation; digits update in place. Optional bar or gauge; hover for the full name.
 - Remaining by default, used if you prefer. Readings turn amber at 20% left and red at 10%; the tool's color stays fixed. Missing readings show `--`.
 - **Show Percentage** is on by default. Turn it off in the panel's **More options** menu or Settings to hide the number; the preference is saved.
+- Checks for updates once a day. **Automatic updates** is on by default: new versions download in the background and install when you quit. Sparebar never restarts itself unexpectedly.
+- An orange dot marks an available update. Open the panel for a short "What's new" message, full notes behind the info button, and **Update and Restart** (or **Restart to Update** when ready). Turn automatic updates off to choose each download; daily checks continue.
 
 If a crowded menu bar hides Sparebar (for example, during a video call), open it from Applications or Spotlight to see your allowances in a window. For the narrowest display, turn off **Show Percentage** and set **Extra meter** to **None** in Settings. When visible, hold Command and drag Sparebar nearer the clock to give it priority over items to its left. macOS can still hide items when space runs out.
 
-Your official CLIs handle sign-in. Sparebar sends no model prompts, stores no credentials or usage history, and has no analytics or third-party package dependencies. [How reads work](docs/providers.md).
+Your official CLIs handle sign-in. Sparebar sends no model prompts, stores no provider credentials or usage history, and has no analytics. [Sparkle](https://sparkle-project.org/) is bundled for updates; checks contact GitHub without sending provider readings or a system profile. [How reads work](docs/providers.md).
+
+Versions through 0.1.2 need one manual installation of an updater-enabled release. Subsequent releases can update in place. Updates must be published before they can be discovered.
 
 Claude's usage control is experimental and can return cached readings. Tested with Codex 0.153.4 and Claude Code 2.1.263. Older macOS and Intel support can follow demand.
 

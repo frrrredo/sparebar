@@ -27,6 +27,8 @@ jobs:
         run: python3 -B scripts/test-release.py
       - name: Build and verify local app bundle
         run: ./scripts/package-app.sh
+      - name: Test the real updater with a local feed and invalid signature
+        run: python3 -B scripts/test-updater.py dist/Sparebar.app
       - name: Archive the exact main build
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: python3 scripts/release.py archive dist/Sparebar.app dist/artifact

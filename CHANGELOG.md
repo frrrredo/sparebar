@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3 (unreleased)
+
+- Automatic updates download in the background and install when Sparebar quits, with no forced restart. One Settings switch controls this; daily checks continue when it is off.
+- An orange dot, short release summary, and Update and Restart action appear in the existing panel. Full notes open behind an information button, with Back to return.
+- Bundle Sparkle for verified update installation. Release preparation signs the finished DMG for Sparkle; publishing updates the public feed automatically.
+
 ## 0.1.2
 
 - Added Show Percentage to More options and Settings, enabled by default. Hiding it reclaims the number's menu bar space and remembers the choice after restarting.

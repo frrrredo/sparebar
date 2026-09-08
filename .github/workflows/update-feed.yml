@@ -1,0 +1,33 @@
+name: Publish update feed
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_id:
+        description: Published release ID to add to the feed
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-feed
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Publish the release's signed update metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ github.event.release.id || inputs.release_id }}
+        run: python3 scripts/publish-feed.py "$RELEASE_ID"

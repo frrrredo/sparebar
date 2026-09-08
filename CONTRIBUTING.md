@@ -2,10 +2,10 @@
 
 Small fixes, clearer errors, and compatibility reports are welcome. Open an issue before adding a provider or changing the UI so we can agree on scope.
 
-1. Fork the repo and create a branch from `main`.
-2. Make one focused change.
+1. Open a feature issue with the problem, motivation, proposed behavior, and acceptance criteria.
+2. Fork the repo and create a branch from `main`. Make one focused change.
 3. Run `swift test` and `./scripts/package-app.sh` on an Apple silicon Mac.
-4. Open a pull request with the problem, change, and checks you ran. Include before/after screenshots for UI changes; use sample data.
+4. Open a pull request with the problem, change, and checks you ran. Link the issue with `Closes #ISSUE_NUMBER` so merging closes it. Include before/after screenshots for UI changes; use sample data.
 
 CI builds and tests every pull request. The maintainer reviews and squash-merges into `main`; releases are separate.
 
@@ -17,6 +17,7 @@ Maintainer: [release steps](docs/releasing.md).
 - Keep setup in the normal interface. Avoid tours, forced choices, and permission prompts on launch.
 - Add a regression test for behavior changes. Pure copy or visual fixes need a UI check, not a test that repeats the implementation.
 - Use synthetic provider responses. Never commit tokens, account identifiers, personal usage, or raw CLI output.
+- Write public issues, pull requests, and release notes as self-contained product descriptions. Keep private conversations, agent transcripts, session identifiers, and personal planning files out of public contributions.
 - You are responsible for understanding and checking submitted code, regardless of how it was written.
 
 `UsageCore` models readings; `UsageProviders` owns CLI transport; `UsageApp` owns native UI; `UsageCheck` is a local diagnostic. [Provider notes](docs/providers.md) explain the integration limits.
