@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.5
+
+- Choose monitored services independently for OpenAI and Claude in Settings. ChatGPT, Codex, claude.ai, and Claude Code start enabled; all other services start off.
+- Limit incident eyes, reminders, tooltip details, and the status panel to selected services. Save choices across launches, including an empty selection that stops that provider's service checks.
+- Apply selection changes to the last report without extra requests or a false recovery animation. Incomplete or unscoped reports remain unconfirmed.
+- Read OpenAI's complete public status report and current product groups instead of its incomplete compatibility summary. Keep the existing five-minute interval and failure backoff.
+
 ## 0.1.4
 
 - Report OpenAI and Claude service incidents in the existing popup, with affected services, official status links, and separate allowance readings. Status checks run directly from the Mac about every five minutes while awake.

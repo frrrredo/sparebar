@@ -502,6 +502,7 @@ struct SettingsContent: View {
                 ).font(.caption).foregroundStyle(.secondary)
             }
             Section("Service health") {
+                ServiceHealthPreferences(store: store)
                 ServiceHealthExplanation()
             }
             Section("Updates") {

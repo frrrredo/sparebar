@@ -81,7 +81,7 @@ struct ServiceHealthEyes: View {
 struct ServiceHealthExplanation: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Checks official OpenAI and Claude status pages for enabled tools about every five minutes while your Mac is awake.")
+            Text("Checks selected services on official status pages about every five minutes while your Mac is awake. Clear a provider's choices to turn its service monitoring off. Allowance readings stay separate.")
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
                 legend(.operational, label: "Normal")
@@ -104,6 +104,45 @@ struct ServiceHealthExplanation: View {
     }
 }
 
+struct ServiceHealthPreferences: View {
+    @ObservedObject var store: UsageStore
+    @State private var expanded: Provider?
+    var body: some View {
+        ForEach(Provider.allCases) { provider in
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(provider.serviceName)
+                        Text(store.health.selectionLabel(provider))
+                            .font(.caption).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 4)
+                    if expanded == provider {
+                        Button("Done") { expanded = nil }
+                            .keyboardShortcut(.cancelAction)
+                            .accessibilityLabel("Done choosing \(provider.serviceName) services")
+                    } else {
+                        Button("Choose...") { expanded = provider }
+                            .accessibilityLabel("Choose \(provider.serviceName) services")
+                    }
+                }
+                if expanded == provider {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(WatchedService.catalog(for: provider)) { service in
+                            Toggle(service.name, isOn: Binding(
+                                get: { store.health.selected(provider).contains(service.id) },
+                                set: { store.health.select(service.id, for: provider, enabled: $0) }
+                            )).toggleStyle(.checkbox)
+                        }
+                    }
+                    .onExitCommand { expanded = nil }
+                }
+            }
+        }
+    }
+}
+
 struct ServiceHealthPanel: View {
     @ObservedObject var store: UsageStore
     var body: some View {
@@ -111,18 +150,24 @@ struct ServiceHealthPanel: View {
             ForEach(store.providers) { provider in
                 let state = store.health.states[provider] ?? .init()
                 let level = state.level(at: store.now)
+                let monitoring = store.health.monitoring(provider)
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Image(systemName: symbol(level)).foregroundStyle(color(level)).accessibilityHidden(true)
-                        Text("\(provider.serviceName): \(headline(level))").fontWeight(.medium)
+                        Text("\(provider.serviceName): \(monitoring ? headline(level) : "monitoring off")").fontWeight(.medium)
                             .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 0)
                         Link(destination: provider.statusURL) { Image(systemName: "arrow.up.right") }
                             .help("Official \(provider.serviceName) status page")
                             .accessibilityLabel("Open official \(provider.serviceName) status page")
                     }
-                    if level == .unknown {
-                        Text(state.checkedAt == nil ? "Waiting for an official status check." : "The latest status could not be confirmed.")
+                    if !monitoring {
+                        Text("Choose services in Settings to monitor this provider.").foregroundStyle(.secondary)
+                    } else if level == .unknown {
+                        Text(state.failed || state.checkedAt.map({ store.now.timeIntervalSince($0) >= ServiceHealthState.freshness }) == true ? "The latest status could not be confirmed." :
+                            state.snapshot?.scopeIncomplete == true ? "The report does not confirm every selected service." :
+                            state.snapshot?.unscopedIncidents.isEmpty == false ? "An incident is reported, but its effect on selected services is unconfirmed." :
+                            state.checkedAt == nil ? "Waiting for an official status check." : "The latest status could not be confirmed.")
                             .foregroundStyle(.secondary)
                     } else if level.hasIncident, let snapshot = state.snapshot {
                         if let incident = snapshot.incidents.first {
@@ -145,7 +190,11 @@ struct ServiceHealthPanel: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    if let checked = state.checkedAt {
+                    if monitoring, level != .unknown, state.snapshot?.unscopedIncidents.isEmpty == false {
+                        Text("Another reported incident has an unconfirmed scope. See the official status page.")
+                            .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    }
+                    if monitoring, let checked = state.checkedAt {
                         Text("\(level == .unknown ? "Last successful check" : "Checked") \(checked.formatted(date: .omitted, time: .shortened))")
                             .font(.system(size: 11)).foregroundStyle(.secondary)
                     }
@@ -172,7 +221,7 @@ struct ServiceHealthPanel: View {
     }
     private func headline(_ level: ServiceHealthLevel) -> String {
         switch level {
-        case .operational: "no incidents reported"
+        case .operational: "selected services operational"
         case .degraded, .outage: "service incident reported"
         case .unknown: "service status unavailable"
         }

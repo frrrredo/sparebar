@@ -76,10 +76,10 @@ private final class StatusProtocol: URLProtocol, @unchecked Sendable {
             .init(code: 429, headers: ["Retry-After": "1800"]),
         ])
         let client = client()
-        _ = try await client.read(.codex)
-        _ = try await client.read(.codex)
+        _ = try await client.read(.claude)
+        _ = try await client.read(.claude)
         #expect(StatusProtocol.responses.captured.allSatisfy { $0.value(forHTTPHeaderField: "If-None-Match") == nil })
-        do { _ = try await client.read(.codex); Issue.record("Rate limit was accepted as service status") }
+        do { _ = try await client.read(.claude); Issue.record("Rate limit was accepted as service status") }
         catch ServiceHealthError.http(let code, let retry) { #expect(code == 429); #expect(retry == 1800) }
         catch { Issue.record("Unexpected failure: \(error)") }
     }
@@ -96,5 +96,14 @@ private final class StatusProtocol: URLProtocol, @unchecked Sendable {
             catch ServiceHealthError.responseTooLarge {} catch { Issue.record("Unexpected failure: \(error)") }
         }
         await #expect(throws: (any Error).self) { try await client.read(.claude) }
+    }
+
+    @Test func openAINativeReportUsesOneRequestAndRetainsProductGroups() async throws {
+        let data = Data(#"{"summary":{"id":"01JMDK9XYNY6RXSED6SDWW50WY","components":[{"id":"sample","name":"Sample chat"}],"affected_components":[],"ongoing_incidents":[],"structure":{"items":[{"group":{"id":"01K5H8S53SY1KMS4GQMNMZXTR1","name":"ChatGPT","components":[{"component_id":"sample"}]}}]}}}"#.utf8)
+        StatusProtocol.responses.reset([.init(data: data)])
+        let snapshot = try await client().read(.codex)
+        #expect(snapshot.filtered(for: .codex, services: ["chatgpt"]).level == .operational)
+        #expect(StatusProtocol.responses.captured.count == 1)
+        #expect(StatusProtocol.responses.captured.first?.url?.path == "/proxy/status.openai.com")
     }
 }

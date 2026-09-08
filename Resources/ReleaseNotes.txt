@@ -1,9 +1,9 @@
-Your robot now keeps an eye on service outages.
+Your robot keeps an eye on the services you actually use.
 
-Sparebar checks official OpenAI and Claude status pages about every five minutes while your Mac is awake, for the tools you have enabled.
+Choose which services affect the eyes and status panel in Settings > Service health. OpenAI and Claude each have a compact Choose button with their own service list.
 
-The robot's eyes tell the story: squares mean no incidents reported, thin lines mean degraded service, crosses mean an outage, and muted lines mean status is unconfirmed. Open the panel to see affected services and their official status pages. The percentage still shows your allowance.
+ChatGPT, Codex, claude.ai, and Claude Code start enabled. APIs, developer consoles, government services, Claude Cowork, and Ads Platform start off. Your choices are saved separately for each provider.
 
-A gentle blink marks a new incident. Outage reminders stop after you open the panel, and happy eyes briefly celebrate recovery. Reduce Motion keeps the eyes still.
+Unselected services no longer trigger incident eyes or reminders. Clear a provider's choices to stop its service checks; allowance readings continue independently. Changing your selection does not pretend an incident recovered.
 
-Find the eye-shape guide and polling details in Settings under Service health. No extra account, API key, or model calls are needed.
+Checks still run about every five minutes while awake. If a report does not identify affected services clearly, Sparebar shows the status as unconfirmed.

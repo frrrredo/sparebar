@@ -11,6 +11,9 @@ import UsageProviders
         didSet { if reading { acknowledge() } }
     }
     private let demo: Bool
+    private let defaults: UserDefaults
+    private var selections: [Provider: Set<String>] = [:]
+    private var rawSnapshots: [Provider: ServiceHealthSnapshot] = [:]
     private let read: Read
     private let pause: @Sendable (TimeInterval) async throws -> Void
     private let jitter: @Sendable () -> TimeInterval
@@ -24,17 +27,22 @@ import UsageProviders
     private var presentedSignals: [Provider: Int] = [:]
 
     init(
-        demo: Bool, interval: TimeInterval = 300,
+        demo: Bool, defaults: UserDefaults = .standard, interval: TimeInterval = 300,
         read: Read? = nil,
         pause: @escaping @Sendable (TimeInterval) async throws -> Void = { try await Task.sleep(for: .seconds($0)) },
         jitter: @escaping @Sendable () -> TimeInterval = { .random(in: 0...15) }
     ) {
         self.demo = demo
+        self.defaults = defaults
         self.interval = interval
         let client = ServiceHealthClient()
         self.read = read ?? { try await client.read($0) }
         self.pause = pause
         self.jitter = jitter
+        for provider in Provider.allCases {
+            let stored = demo ? nil : defaults.stringArray(forKey: "health.services.\(provider.rawValue)")
+            selections[provider] = stored.map(Set.init) ?? WatchedService.defaults(for: provider)
+        }
         if demo { for provider in Provider.allCases { showDemo(provider, level: .operational) } }
     }
 
@@ -56,9 +64,33 @@ import UsageProviders
 
     func setProviders(_ providers: [Provider]) {
         self.providers = providers
-        for provider in Array(tasks.keys) where !providers.contains(provider) { cancel(provider) }
+        for provider in Array(tasks.keys) where !providers.contains(provider) || !monitoring(provider) { cancel(provider) }
         guard started, !sleeping, !demo else { return }
-        for provider in providers where tasks[provider] == nil { poll(provider) }
+        for provider in providers where monitoring(provider) && tasks[provider] == nil { poll(provider) }
+    }
+
+    func selected(_ provider: Provider) -> Set<String> {
+        (selections[provider] ?? []).intersection(WatchedService.catalog(for: provider).map(\.id))
+    }
+    func monitoring(_ provider: Provider) -> Bool { !selected(provider).isEmpty }
+    func selectionLabel(_ provider: Provider) -> String {
+        let names = WatchedService.catalog(for: provider).filter { selected(provider).contains($0.id) }.map(\.name)
+        return names.isEmpty ? "No services selected" : names.joined(separator: ", ")
+    }
+    func select(_ service: String, for provider: Provider, enabled: Bool) {
+        guard WatchedService.catalog(for: provider).contains(where: { $0.id == service }) else { return }
+        let before = selected(provider)
+        if enabled { selections[provider, default: []].insert(service) }
+        else { selections[provider, default: []].remove(service) }
+        guard before != selected(provider) else { return }
+        if !demo { defaults.set(selected(provider).sorted(), forKey: "health.services.\(provider.rawValue)") }
+        states[provider]?.reproject(rawSnapshots[provider]?.filtered(for: provider, services: selected(provider)))
+        setProviders(providers)
+        onChange?()
+    }
+    private func apply(_ snapshot: ServiceHealthSnapshot, for provider: Provider, at date: Date) {
+        rawSnapshots[provider] = snapshot
+        states[provider]?.apply(snapshot.filtered(for: provider, services: selected(provider)), at: date, reading: reading)
     }
 
     private func poll(_ provider: Provider) {
@@ -71,7 +103,7 @@ import UsageProviders
                     let snapshot = try await read(provider)
                     try Task.checkCancellation()
                     guard let self else { return }
-                    self.states[provider]?.apply(snapshot, at: Date(), reading: self.reading)
+                    self.apply(snapshot, for: provider, at: Date())
                     self.onChange?()
                     delay = self.interval
                 } catch {
@@ -126,9 +158,10 @@ import UsageProviders
         return !sleeping && state.level(at: date) != .unknown && date.timeIntervalSince(signal.date) < 60
     }
     func tooltip(_ provider: Provider, at date: Date) -> String {
+        guard monitoring(provider) else { return "\(provider.serviceName) service monitoring is off." }
         let level = level(provider, at: date)
         if level == .unknown { return "\(provider.serviceName) service status is unconfirmed." }
-        if level == .operational { return "\(provider.serviceName): no service incidents reported." }
+        if level == .operational { return "\(provider.serviceName): selected services are operational." }
         let detail = states[provider]?.snapshot?.incidents.first?.displayName
             ?? states[provider]?.snapshot?.affected.map(\.displayName).prefix(3).joined(separator: ", ") ?? ""
         return "\(provider.serviceName): \(level.label.lowercased()). \(detail)"
@@ -141,11 +174,14 @@ import UsageProviders
         case .outage: "major_outage"
         case .unknown: "unrecognized"
         }
-        let names = provider == .codex ? ["ChatGPT", "Images", "Codex", "OpenAI API"] : ["Claude.ai", "Claude Code", "Claude API"]
-        let components = names.enumerated().map { index, name in
-            ServiceComponent(id: "sample-\(index)", name: name, status: index == 1 ? status : "operational")
+        let catalog = WatchedService.catalog(for: provider)
+        let components = catalog.flatMap { service in
+            service.componentIDs.sorted().enumerated().map { index, id in
+                ServiceComponent(id: id, name: service.name,
+                    status: service.id == (provider == .codex ? "codex" : "code") && index == 0 ? status : "operational")
+            }
         }
-        states[provider]?.apply(.init(components: components), at: Date(), reading: reading)
+        apply(.init(components: components, groups: catalog), for: provider, at: Date())
         onChange?()
     }
 }
