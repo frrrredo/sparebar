@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+  <channel>
+    <title>Sparebar updates</title>
+    <item>
+      <title>Sparebar 0.1.3</title>
+      <description sparkle:format="plain-text">Sparebar keeps itself fresh - one less thing to remember.
+
+New versions download in the background and install when you quit. Sparebar never restarts on its own.
+
+A small orange dot lets you know an update is available. Open Sparebar to see what's new and choose Update and Restart whenever it suits you.
+
+Prefer to choose each download? Turn off Automatic updates in Settings. Sparebar will still check once a day and let you know when something new is ready.</description>
+      <sparkle:version>4</sparkle:version>
+      <sparkle:shortVersionString>0.1.3</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>26.5.1</sparkle:minimumSystemVersion>
+      <enclosure url="https://github.com/frrrredo/sparebar/releases/download/v0.1.3/Sparebar-0.1.3-arm64.dmg" length="1567924" type="application/octet-stream" sparkle:edSignature="dnS8ENeD5xcWmwUN+A5Qn2/xAbLGmpcwzm6GKD+7QI1XjKH18RpVx8j74MiV94BvLGlxQ6JOk1RsKKJy3xPWBw==" />
+    </item>
+  </channel>
+</rss>
