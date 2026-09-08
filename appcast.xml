@@ -3,6 +3,22 @@
   <channel>
     <title>Sparebar updates</title>
     <item>
+      <title>Sparebar 0.1.5</title>
+      <description sparkle:format="plain-text">Your robot keeps an eye on the services you actually use.
+
+Choose which services affect the eyes and status panel in Settings &gt; Service health. OpenAI and Claude each have a compact Choose button with their own service list.
+
+ChatGPT, Codex, claude.ai, and Claude Code start enabled. APIs, developer consoles, government services, Claude Cowork, and Ads Platform start off. Your choices are saved separately for each provider.
+
+Unselected services no longer trigger incident eyes or reminders. Clear a provider's choices to stop its service checks; allowance readings continue independently. Changing your selection does not pretend an incident recovered.
+
+Checks still run about every five minutes while awake. If a report does not identify affected services clearly, Sparebar shows the status as unconfirmed.</description>
+      <sparkle:version>6</sparkle:version>
+      <sparkle:shortVersionString>0.1.5</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>26.5.1</sparkle:minimumSystemVersion>
+      <enclosure url="https://github.com/frrrredo/sparebar/releases/download/v0.1.5/Sparebar-0.1.5-arm64.dmg" length="1772846" type="application/octet-stream" sparkle:edSignature="uexkrc8gH5e78ZUDJchoDhMFjaK1PEf74n2fx/DNukMjW7hAsHo6EERT4avst9q3BE3vGeb92f++SYUym8i3Ag==" />
+    </item>
+    <item>
       <title>Sparebar 0.1.4</title>
       <description sparkle:format="plain-text">Your robot now keeps an eye on service outages.
 
