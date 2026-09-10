@@ -3,6 +3,22 @@
   <channel>
     <title>Sparebar updates</title>
     <item>
+      <title>Sparebar 0.1.6</title>
+      <description sparkle:format="plain-text">Your little battery drains again, and its numbers keep up.
+
+The robot's battery fill follows the displayed allowance during normal service. The eyes stay readable across both filled and empty areas. During service problems or unconfirmed status, the face stays full so the health signal remains clear.
+
+Automatic allowance checks now recover if their timer falls behind, so an old reading does not stay unavailable until you refresh manually. Retry limits still apply when a provider cannot be reached.
+
+The normal eyes have equal widths on Retina displays, with a slightly clearer gap between them. Battery changes respect Reduce Motion.
+
+This is a preview release. Launch at login after a real login, physical sleep/wake, VoiceOver, and sustained battery use still need manual verification.</description>
+      <sparkle:version>7</sparkle:version>
+      <sparkle:shortVersionString>0.1.6</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>26.5.1</sparkle:minimumSystemVersion>
+      <enclosure url="https://github.com/frrrredo/sparebar/releases/download/v0.1.6/Sparebar-0.1.6-arm64.dmg" length="1777935" type="application/octet-stream" sparkle:edSignature="1aZCJCjHK+PAy488MPTb+1zpnSQwoW6HdpnjDB0iOTHa/t07liWxE1sYnH+x+EOWZ92GV+u5RqXKYGvpjuyIAg==" />
+    </item>
+    <item>
       <title>Sparebar 0.1.5</title>
       <description sparkle:format="plain-text">Your robot keeps an eye on the services you actually use.
 
