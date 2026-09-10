@@ -34,7 +34,7 @@ open dist/Sparebar.app
 
 - Rotates between tools; opening the panel pauses it.
 - Weekly, session, and model allowances when available.
-- Percentage beside a compact robot with a system-colored outline. Its full blue face identifies Codex; orange identifies Claude. Eyes show service health; percentage and optional bar or gauge show allowance. Only the robot slides during rotation; digits update in place. Hover for the tool name and reported service status.
+- Percentage beside a compact battery-shaped robot. Blue identifies Codex; orange identifies Claude. During normal service, its fill follows the displayed allowance and drains from right to left. The eyes remain readable in the empty area. Only the robot slides during rotation; digits update in place. Hover for the tool name and reported service status.
 - Remaining by default, used if you prefer. Readings turn amber at 20% left and red at 10%; the tool's color stays fixed. Missing readings show `--`.
 - **Show Percentage** is on by default. Turn it off in the panel's **More options** menu or Settings to hide the number; the preference is saved.
 - Checks for updates once a day. **Automatic updates** is on by default: new versions download in the background and install when you quit. Sparebar never restarts itself unexpectedly.
@@ -52,7 +52,14 @@ Claude's usage control is experimental and can return cached readings. Tested wi
 
 Keep an eye on your allowance and the services behind it.
 
-Service health is included from version 0.1.4. Sparebar reads public service reports for OpenAI and Claude about every five minutes while your Mac is awake. The robot's full blue or orange face identifies the provider; its eyes show normal service, degradation, an outage, or unconfirmed status. Percentage and optional meters still show your allowance.
+Service health is included from version 0.1.4. Sparebar reads public service reports for OpenAI and Claude about every five minutes while your Mac is awake. Its eyes show normal service, degradation, an outage, or unconfirmed status. During normal service, the battery fill represents the displayed allowance. Degraded, outage, and unconfirmed states keep a full face so their eye shapes stay clear; percentage and optional meters continue to show allowance.
+
+Native battery states with sample data:
+
+<p>
+  <img src="docs/images/battery-fill-light.png" width="383" alt="Light appearance: Codex and Claude battery fill at full, partial, empty, and unavailable readings, followed by full-face service-health signals.">
+  <img src="docs/images/battery-fill-dark.png" width="383" alt="Dark appearance: both providers keep readable eyes across filled and empty battery areas.">
+</p>
 
 Open the panel to see which service is affected and follow the official status link for details. A gentle pulse marks a new incident, with ten-minute outage reminders until you open the panel. Happy eyes briefly mark recovery. Reduce Motion keeps the eyes still. These public status checks require no extra account or API key.
 

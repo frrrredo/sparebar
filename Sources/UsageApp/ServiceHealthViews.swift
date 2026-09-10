@@ -1,11 +1,12 @@
 import SwiftUI
 import UsageCore
 
-// Service state changes the eyes; the full face identifies the provider.
-// Numeric allowance and optional meters remain independent of service reports.
+// Service state changes the eyes. One shared eye mask keeps motion synchronized
+// across the filled and empty portions of the allowance battery.
 private struct ServiceEye: Shape {
     let level: ServiceHealthLevel
     let happy: Bool
+    var leadingInset: CGFloat = 0
     func path(in rect: CGRect) -> Path {
         var path = Path()
         if happy {
@@ -18,7 +19,9 @@ private struct ServiceEye: Shape {
         }
         switch level {
         case .operational:
-            path.addRect(rect)
+            path.addRect(CGRect(
+                x: rect.minX + leadingInset, y: rect.minY,
+                width: rect.width - leadingInset, height: rect.height))
         case .degraded, .unknown:
             let height = level == .degraded ? 2.4225 : 2.85
             path.addRect(CGRect(x: rect.minX, y: rect.midY - height / 2, width: rect.width, height: height))
@@ -40,6 +43,8 @@ struct ServiceHealthEyes: View {
     let signal: ServiceHealthSignal?
     let reducedMotion: Bool
     var consumeSignal: () -> Bool = { true }
+    var filledFraction: CGFloat = 1
+    @Environment(\.displayScale) private var displayScale
     @State private var happy = false
     @State private var openness = 1.0
     private struct MotionKey: Equatable {
@@ -47,17 +52,29 @@ struct ServiceHealthEyes: View {
         let reduced: Bool
         let level: ServiceHealthLevel
     }
-    var body: some View {
+    private var eyeMask: some View {
         let size: CGFloat = level == .operational ? 5.13 : 5.7
-        HStack(spacing: 2) {
-            ForEach(0..<2) { _ in
-                ServiceEye(level: level, happy: happy && level == .operational)
-                    .fill(level == .unknown ? color.opacity(0.5) : color)
+        return HStack(spacing: 2) {
+            ForEach(0..<2) { index in
+                // Trim the extra Retina pixel from the right eye's inner edge.
+                // Keep both layout frames fixed; 1x rendering is already equal.
+                ServiceEye(level: level, happy: happy && level == .operational,
+                           leadingInset: index == 1 && displayScale > 1 ? 1 / displayScale : 0)
+                    .fill(.white)
                     .frame(width: size, height: size)
             }
         }
         .scaleEffect(x: 1, y: openness)
-        .opacity(0.65 + 0.35 * openness)
+    }
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Color.primary
+                color.frame(width: geometry.size.width * filledFraction)
+            }
+            .mask { eyeMask.frame(width: geometry.size.width, height: geometry.size.height) }
+        }
+        .opacity((level == .unknown ? 0.5 : 1) * (0.65 + 0.35 * openness))
         .task(id: MotionKey(sequence: signal?.sequence, reduced: reducedMotion, level: level)) {
             happy = false
             openness = 1
@@ -97,7 +114,7 @@ struct ServiceHealthExplanation: View {
     private func legend(_ level: ServiceHealthLevel, label: String) -> some View {
         VStack(spacing: 5) {
             StatusAgent(color: Color(red: 0.94, green: 0.58, blue: 0.40), eyeColor: .black,
-                        amount: nil, health: level, reducedMotion: true)
+                        amount: 100, health: level, reducedMotion: true)
                 .accessibilityHidden(true)
             Text(label)
         }.frame(maxWidth: .infinity)

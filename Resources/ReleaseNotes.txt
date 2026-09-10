@@ -1,9 +1,9 @@
-Your robot keeps an eye on the services you actually use.
+Your little battery drains again, and its numbers keep up.
 
-Choose which services affect the eyes and status panel in Settings > Service health. OpenAI and Claude each have a compact Choose button with their own service list.
+The robot's battery fill follows the displayed allowance during normal service. The eyes stay readable across both filled and empty areas. During service problems or unconfirmed status, the face stays full so the health signal remains clear.
 
-ChatGPT, Codex, claude.ai, and Claude Code start enabled. APIs, developer consoles, government services, Claude Cowork, and Ads Platform start off. Your choices are saved separately for each provider.
+Automatic allowance checks now recover if their timer falls behind, so an old reading does not stay unavailable until you refresh manually. Retry limits still apply when a provider cannot be reached.
 
-Unselected services no longer trigger incident eyes or reminders. Clear a provider's choices to stop its service checks; allowance readings continue independently. Changing your selection does not pretend an incident recovered.
+The normal eyes have equal widths on Retina displays, with a slightly clearer gap between them. Battery changes respect Reduce Motion.
 
-Checks still run about every five minutes while awake. If a report does not identify affected services clearly, Sparebar shows the status as unconfirmed.
+This is a preview release. Launch at login after a real login, physical sleep/wake, VoiceOver, and sustained battery use still need manual verification.

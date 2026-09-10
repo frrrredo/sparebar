@@ -9,6 +9,8 @@ Sparebar asks the installed official CLIs for account and usage data. It does no
 
 Refresh runs every five minutes, with backoff on errors and another check after wake or reset. Each tool has one active read at a time. Helpers have time/output bounds, run outside coding projects, and stop on cancellation or quit. Existing managed restrictions remain in effect.
 
+While awake, the existing 30-second clock tick also recovers overdue allowance checks if their timer was delayed or lost. It respects error backoff and active reads; percentages return only after a successful fresh reading.
+
 "Checked" is when the CLI responded. Missing percentages are unavailable, not zero. A passed reset waits for new data; it never invents a full allowance. Old readings stop being current after 15 minutes or a failed check. Account changes discard previous readings.
 
 ## Service status
@@ -23,7 +25,7 @@ Only selected components and their incidents drive eyes, reminders, tooltips, an
 
 Each provider is checked about every five minutes while awake, with small random offsets to spread requests. Launch and wake trigger a check after a short random delay. Requests have time and response-size limits; failures back off, and server retry instructions are respected within a one-year bound. Every scheduled check contacts the provider. When supported, an unchanged-response validator avoids downloading the same report again; it does not add an extra cache waiting period.
 
-The eyes show reported service health, and the full face identifies the provider. Percentage and optional bar/gauge still show allowance. Official reports can lag a real incident and do not guarantee availability for every account. A failed request, unrecognized status, or report more than ten minutes old is shown as unconfirmed, not as an outage. The last report stays in memory only.
+The eyes show reported service health. During normal service, the battery fill follows the displayed allowance (remaining or used), draining from right to left. The empty area retains a faint provider tint, and eye colors adapt across the fill boundary. An unavailable allowance shows `--` with no charged region; it never invents a reading. Other service states keep a full provider-colored face so the eye shapes remain clear. Percentage and optional bar/gauge still show allowance independently. Official reports can lag a real incident and do not guarantee availability for every account. A failed request, unrecognized status, or report more than ten minutes old is shown as unconfirmed, not as an outage. The last report stays in memory only.
 
 A new or worsening incident triggers one gentle pulse. An unacknowledged outage can pulse again every ten minutes; opening the popup or fallback allowance window acknowledges it. A confirmed recovery briefly shows happy eyes, then normal eyes. Reduce Motion suppresses these animations. This feature does not send system notifications.
 
