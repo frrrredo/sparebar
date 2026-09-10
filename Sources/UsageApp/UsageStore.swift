@@ -1,9 +1,11 @@
 import AppKit
+import OSLog
 import SwiftUI
 import UsageCore
 import UsageProviders
 
 @MainActor final class UsageStore: ObservableObject {
+    typealias Read = @Sendable (Provider, ConnectionOptions) async -> ReadOutcome
     @Published var states = Dictionary(uniqueKeysWithValues: Provider.allCases.map { ($0, ProviderState()) })
     @Published var currentIndex = 0
     @Published var popoverOpen = false {
@@ -14,6 +16,9 @@ import UsageProviders
     let health: ServiceHealthController
     var statusChanged: (() -> Void)?
     private let defaults: UserDefaults
+    private let read: Read
+    private let pause: @Sendable (TimeInterval) async throws -> Void
+    private let logger = Logger(subsystem: "io.github.frrrredo.sparebar", category: "AllowanceRefresh")
     private var reads: [Provider: Task<Void, Never>] = [:]
     private var revisions: [Provider: Int] = [:]
     private var refreshTimer: Task<Void, Never>?
@@ -22,9 +27,17 @@ import UsageProviders
     private var sleeping = false
     private var stopping = false
 
-    init(demo: Bool, defaults: UserDefaults = .standard) {
+    init(
+        demo: Bool, defaults: UserDefaults = .standard,
+        read: @escaping Read = { await ProviderReader.read($0, options: $1) },
+        pause: @escaping @Sendable (TimeInterval) async throws -> Void = {
+            try await Task.sleep(for: .seconds($0))
+        }
+    ) {
         self.demo = demo
         self.defaults = defaults
+        self.read = read
+        self.pause = pause
         self.health = ServiceHealthController(demo: demo, defaults: defaults)
         let installed =
             demo
@@ -166,12 +179,19 @@ import UsageProviders
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .seconds(30)) } catch { return }
                 guard let self, !self.stopping else { return }
-                if !self.sleeping {
-                    self.now = Date()
-                    self.statusChanged?()
-                }
+                self.tick()
             }
         }
+    }
+    func tick() {
+        guard !sleeping, !stopping else { return }
+        now = Date()
+        // Reconcile against wall time even if the one-shot timer was lost or delayed.
+        for provider in providers where !demo && reads[provider] == nil && due(provider) <= now {
+            logger.notice("Recovering overdue allowance refresh for \(provider.rawValue, privacy: .public)")
+            refresh(provider)
+        }
+        statusChanged?()
     }
     private func startRotation() {
         rotationTimer?.cancel()
@@ -194,8 +214,9 @@ import UsageProviders
         let options = ConnectionOptions(
             executable: preference("path.\(provider.rawValue)"),
             configDirectory: preference("root.\(provider.rawValue)"))
+        let read = self.read
         reads[provider] = Task { [weak self] in
-            let outcome = await ProviderReader.read(provider, options: options)
+            let outcome = await read(provider, options)
             guard let self else { return }
             self.reads[provider] = nil
             self.states[provider]?.checking = false
@@ -232,10 +253,14 @@ import UsageProviders
         guard !demo, !sleeping, !stopping,
             let next = providers.filter({ reads[$0] == nil }).map(due).min()
         else { return }
+        let pause = self.pause
         refreshTimer = Task { [weak self] in
-            do { try await Task.sleep(for: .seconds(max(0.2, next.timeIntervalSinceNow))) } catch { return }
-            guard let self else { return }
+            do { try await pause(max(0.2, next.timeIntervalSinceNow)) } catch { return }
+            guard let self, !Task.isCancelled else { return }
             for provider in self.providers where self.due(provider) <= Date() { self.refresh(provider) }
+            // A delay can finish before the wall-clock deadline. Always rearm,
+            // including when no read started and therefore no completion will do it.
+            self.schedule()
         }
     }
     func sleep() {

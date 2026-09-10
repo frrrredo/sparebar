@@ -9,6 +9,8 @@ Sparebar asks the installed official CLIs for account and usage data. It does no
 
 Refresh runs every five minutes, with backoff on errors and another check after wake or reset. Each tool has one active read at a time. Helpers have time/output bounds, run outside coding projects, and stop on cancellation or quit. Existing managed restrictions remain in effect.
 
+While awake, the existing 30-second clock tick also recovers overdue allowance checks if their timer was delayed or lost. It respects error backoff and active reads; percentages return only after a successful fresh reading.
+
 "Checked" is when the CLI responded. Missing percentages are unavailable, not zero. A passed reset waits for new data; it never invents a full allowance. Old readings stop being current after 15 minutes or a failed check. Account changes discard previous readings.
 
 ## Service status

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Recover stalled automatic allowance checks so percentages do not stay unavailable until a manual refresh.
+
 ## 0.1.5
 
 - Choose monitored services independently for OpenAI and Claude in Settings. ChatGPT, Codex, claude.ai, and Claude Code start enabled; all other services start off.
