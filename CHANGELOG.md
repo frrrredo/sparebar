@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Recover stalled automatic allowance checks so percentages do not stay unavailable until a manual refresh.
+- Make the operational robot eyes equal in width on Retina displays by trimming the right eye's inner edge.
 
 ## 0.1.5
 

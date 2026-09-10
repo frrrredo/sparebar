@@ -6,6 +6,7 @@ import UsageCore
 private struct ServiceEye: Shape {
     let level: ServiceHealthLevel
     let happy: Bool
+    var leadingInset: CGFloat = 0
     func path(in rect: CGRect) -> Path {
         var path = Path()
         if happy {
@@ -18,7 +19,9 @@ private struct ServiceEye: Shape {
         }
         switch level {
         case .operational:
-            path.addRect(rect)
+            path.addRect(CGRect(
+                x: rect.minX + leadingInset, y: rect.minY,
+                width: rect.width - leadingInset, height: rect.height))
         case .degraded, .unknown:
             let height = level == .degraded ? 2.4225 : 2.85
             path.addRect(CGRect(x: rect.minX, y: rect.midY - height / 2, width: rect.width, height: height))
@@ -40,6 +43,7 @@ struct ServiceHealthEyes: View {
     let signal: ServiceHealthSignal?
     let reducedMotion: Bool
     var consumeSignal: () -> Bool = { true }
+    @Environment(\.displayScale) private var displayScale
     @State private var happy = false
     @State private var openness = 1.0
     private struct MotionKey: Equatable {
@@ -50,8 +54,11 @@ struct ServiceHealthEyes: View {
     var body: some View {
         let size: CGFloat = level == .operational ? 5.13 : 5.7
         HStack(spacing: 2) {
-            ForEach(0..<2) { _ in
-                ServiceEye(level: level, happy: happy && level == .operational)
+            ForEach(0..<2) { index in
+                // Trim the extra Retina pixel from the right eye's inner edge.
+                // Keep both layout frames fixed; 1x rendering is already equal.
+                ServiceEye(level: level, happy: happy && level == .operational,
+                           leadingInset: index == 1 && displayScale > 1 ? 1 / displayScale : 0)
                     .fill(level == .unknown ? color.opacity(0.5) : color)
                     .frame(width: size, height: size)
             }
