@@ -55,6 +55,11 @@ struct StatusAgent: View {
     var reducedMotion = false
     var consumeHealthSignal: () -> Bool = { true }
     private let bodyHeight: CGFloat = 13 * 1.15
+    private var fillFraction: CGFloat {
+        guard health == .operational else { return 1 }
+        guard let amount, amount.isFinite else { return 0 }
+        return CGFloat(min(100, max(0, amount)) / 100)
+    }
     private var battery: some View {
         Image(systemName: "battery.0percent")
             .resizable().symbolRenderingMode(.monochrome)
@@ -66,7 +71,7 @@ struct StatusAgent: View {
     }
     private var eyes: some View {
         ServiceHealthEyes(level: health, color: eyeColor, signal: healthSignal, reducedMotion: reducedMotion,
-                          consumeSignal: consumeHealthSignal)
+                          consumeSignal: consumeHealthSignal, filledFraction: fillFraction)
             .frame(width: 19, height: bodyHeight - 4)
     }
     var body: some View {
@@ -74,8 +79,15 @@ struct StatusAgent: View {
             ZStack {
                 RoundedRectangle(cornerRadius: 1, style: .continuous)
                     .fill(color)
+                    .opacity(0.12)
+                RoundedRectangle(cornerRadius: 1, style: .continuous)
+                    .fill(color)
+                    .mask(alignment: .leading) { Rectangle().frame(width: 19 * fillFraction) }
                 eyes
-            }.frame(width: 19, height: bodyHeight - 4).offset(x: 5, y: 2)
+            }
+            .frame(width: 19, height: bodyHeight - 4)
+            .animation(reducedMotion ? nil : .easeOut(duration: 0.25), value: fillFraction)
+            .offset(x: 5, y: 2)
             battery.offset(x: 3)
             battery.scaleEffect(x: -1, y: 1)
                 .mask(alignment: .leading) { Rectangle().frame(width: 4) }
@@ -498,7 +510,7 @@ struct SettingsContent: View {
                     "Show remaining allowance",
                     isOn: Binding(get: { store.showRemaining }, set: { store.set($0, for: "remaining") }))
                 Text(
-                    "Blue is Codex; orange is Claude. The eyes show service health; the percentage and extra meter show allowance. Hover for details. The reading turns amber at 20% remaining and red at 10%, even when percentages show used."
+                    "Blue is Codex; orange is Claude. During normal service, the battery fill follows the displayed allowance. Other service states keep the face full so the eyes stay clear. Hover for details. The reading turns amber at 20% remaining and red at 10%, even when percentages show used."
                 ).font(.caption).foregroundStyle(.secondary)
             }
             Section("Service health") {

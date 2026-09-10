@@ -1,9 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.1.6
 
 - Recover stalled automatic allowance checks so percentages do not stay unavailable until a manual refresh.
 - Make the operational robot eyes equal in width on Retina displays by trimming the right eye's inner edge.
+- Restore battery drain during normal service, with readable eyes across filled and empty areas. Keep a full face for other service-health states and respect Reduce Motion.
 
 ## 0.1.5
 
