@@ -1,9 +1,9 @@
-Your little battery drains again, and its numbers keep up.
+Keep a few spare batteries ready for your Codex allowance.
 
-The robot's battery fill follows the displayed allowance during normal service. The eyes stay readable across both filled and empty areas. During service problems or unconfirmed status, the face stays full so the health signal remains clear.
+Available Codex usage resets now appear as a horizontal reserve beneath your allowance. Filled batteries stay on the left; confirmed resets used in Sparebar on this Mac stay on the right. Empty reserves say No spares available.
 
-Automatic allowance checks now recover if their timer falls behind, so an old reading does not stay unavailable until you refresh manually. Retry limits still apply when a provider cannot be reached.
+At 10% remaining or less, Use a spare offers an account and reset confirmation. Healthy allowance stays quiet. Sparebar never redeems automatically and always rechecks the provider result.
 
-The normal eyes have equal widths on Retina displays, with a slightly clearer gap between them. Battery changes respect Reduce Motion.
+Interrupted requests keep the same request ID across retries and restarts, helping prevent accidental duplicate use. Reset support depends on your Codex CLI and account. Used history covers only confirmed resets in Sparebar on this Mac.
 
-This is a preview release. Launch at login after a real login, physical sleep/wake, VoiceOver, and sustained battery use still need manual verification.
+This is a preview release. Real redemption is left to the user's explicit action. Launch at login after a real login, physical sleep/wake, VoiceOver, and sustained battery use still need manual verification.

@@ -33,20 +33,24 @@ public struct Allowance: Identifiable, Equatable, Sendable {
 
 public struct UsageSnapshot: Sendable {
     public let provider: Provider
-    // One-way account association stays in memory and is excluded from diagnostics.
+    // One-way account association; also scopes the local reset receipt ledger.
     public let accountKey: String
     public let allowances: [Allowance]
     public let checkedAt: Date
     public let resetCredits: Int?
+    public let resetDetails: [ResetCredit]
+    public let accountLabel: String?
     public init(
         provider: Provider, accountKey: String, allowances: [Allowance], checkedAt: Date = Date(),
-        resetCredits: Int? = nil
+        resetCredits: Int? = nil, resetDetails: [ResetCredit] = [], accountLabel: String? = nil
     ) {
         self.provider = provider
         self.accountKey = accountKey
         self.allowances = allowances
         self.checkedAt = checkedAt
         self.resetCredits = resetCredits
+        self.resetDetails = resetDetails
+        self.accountLabel = accountLabel
     }
     public var preferred: Allowance? {
         allowances.first { $0.weekly && $0.isMain } ?? allowances.first { $0.isMain } ?? allowances.first

@@ -13,6 +13,20 @@ While awake, the existing 30-second clock tick also recovers overdue allowance c
 
 "Checked" is when the CLI responded. Missing percentages are unavailable, not zero. A passed reset waits for new data; it never invents a full allowance. Old readings stop being current after 15 minutes or a failed check. Account changes discard previous readings.
 
+## Codex usage resets
+
+The app-server's `account/rateLimits/read` response may contain `rateLimitResetCredits`. `availableCount` is authoritative; credit details can be missing or partial. Sparebar retains the returned titles, descriptions and expiration dates, but does not assume the first reported expiry is the earliest in the whole reserve. An unavailable inventory is distinct from zero.
+
+Only the confirmation action calls `account/rateLimitResetCredit/consume`. The background read allowlist remains read-only. Before sending, the dedicated helper rechecks the signed-in account, configuration's account association, selected allowance and reserve. It sends a saved UUID as `idempotencyKey`, letting OpenAI select a credit. The provider decides eligibility and restored windows; no model prompts are involved. [App-server reset contract](https://learn.chatgpt.com/docs/app-server#8-earned-rate-limit-resets-chatgpt).
+
+`reset` and `alreadyRedeemed` are confirmed consumption. `noCredit` and `nothingToReset` do not spend a spare. An uncertain result retains the request ID across restart, and the user can explicitly retry it. A failed retry preflight keeps that same ID. After a result, the normal reader fetches allowance and inventory again; Sparebar never assumes 100% or subtracts from the provider count itself. A successful redemption followed by a failed read remains a confirmed redemption with an unavailable current allowance.
+
+The local ledger lives at `~/Library/Application Support/Sparebar/Resets/ledger.json`, with a private directory, atomic writes, a file lock, and a durable save before dispatch. It contains one-way account associations, request IDs and receipt dates, never tokens or account email addresses. It tracks only confirmed use through Sparebar on this Mac. A provider inventory decrease, expiry, or use elsewhere cannot create a used receipt. Do not delete the ledger while a reset is unconfirmed: its request ID is needed for safe recovery. Corrupt or unreadable history disables new redemption until it can be read safely.
+
+Account and configuration changes invalidate the confirmation. A pending request is shown again only for its matching account. The same app-server session checks account identity immediately before dispatch; a concurrent sign-in change outside Sparebar cannot be made atomic with consumption because the provider method accepts no expected-account parameter.
+
+The native flow and transport are tested with synthetic providers, including a dropped response and idempotent retry. Production redemption requires an explicit user action and is not exercised by automated tests. Manual refresh of public service health remains a separate feature.
+
 ## Service status
 
 Sparebar also reads the public [OpenAI status report](https://status.openai.com/proxy/status.openai.com) and [Claude status feed](https://status.claude.com/api/v2/summary.json) for enabled providers with selected services. These reports are independent of CLI allowance reads and require no sign-in, cookies, model calls, or Sparebar-hosted service.

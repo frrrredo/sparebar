@@ -42,11 +42,26 @@ open dist/Sparebar.app
 
 If a crowded menu bar hides Sparebar (for example, during a video call), open it from Applications or Spotlight to see your allowances in a window. For the narrowest display, turn off **Show Percentage** and set **Extra meter** to **None** in Settings. When visible, hold Command and drag Sparebar nearer the clock to give it priority over items to its left. macOS can still hide items when space runs out.
 
-Your official CLIs handle sign-in. Sparebar sends no model prompts, stores no provider credentials or usage history, and has no analytics. [Sparkle](https://sparkle-project.org/) is bundled for updates; checks contact GitHub without sending provider readings or a system profile. [How reads work](docs/providers.md).
+Your official CLIs handle sign-in. Sparebar sends no model prompts, stores no provider credentials or allowance history, and has no analytics. It keeps account-scoped reset receipts and pending request IDs locally so a retry cannot spend another spare. [Sparkle](https://sparkle-project.org/) is bundled for updates; checks contact GitHub without sending provider readings or a system profile. [How reads work](docs/providers.md).
 
 Versions through 0.1.2 need one manual installation of an updater-enabled release. Subsequent releases can update in place. Updates must be published before they can be discovered.
 
 Claude's usage control is experimental and can return cached readings. Tested with Codex 0.153.4 and Claude Code 2.1.263. Older macOS and Intel support can follow demand.
+
+## Spare batteries for Codex
+
+Codex accounts that report usage resets show a small battery reserve beneath their allowance. Filled batteries on the left are available; empty batteries on the right are confirmed resets used in Sparebar on this Mac. The counts remain visible when more batteries exist than fit in the strip.
+
+At 10% remaining or less, a fresh reading with available spares offers **Use a spare**. Review the account and reported reset details, then choose **Use 1 reset**. OpenAI chooses the eligible reset and limits to restore; Sparebar checks the resulting allowance and reserve. A healthy allowance has no reset prompt, and an empty reserve says **No spares available**.
+
+An interrupted request stays available as **Review pending reset**, including after restarting Sparebar. Retrying uses the same saved request ID. Sparebar never uses a reset automatically, and it does not count expiration or use in other apps as local use.
+
+<p>
+  <img src="docs/images/reserves-low-dark.png" width="332" alt="Native Sparebar with synthetic low Codex allowance, three filled spare batteries and two used batteries, plus Use a spare.">
+  <img src="docs/images/reserves-healthy-light.png" width="332" alt="Native Sparebar with synthetic healthy allowance and a quiet horizontal reserve, with no reset action.">
+</p>
+
+Native views with synthetic data. Reserve availability and redemption depend on the installed Codex CLI and account. If unsupported, update the official CLI. See [reset behavior and local storage](docs/providers.md#codex-usage-resets).
 
 ## Service health
 

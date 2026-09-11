@@ -102,18 +102,26 @@ public enum ProviderReader {
                 ])
                 _ = try codexRequest(
                     session, id: 1, method: "initialize",
-                    params: ["clientInfo": [
-                        "name": "sparebar",
-                        "version": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev",
-                    ]])
+                    params: [
+                        "clientInfo": [
+                            "name": "sparebar",
+                            "version": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+                                ?? "dev",
+                        ]
+                    ])
                 try session.send(["method": "initialized", "params": [:]])
-                let before = try Normalize.codexIdentity(
-                    codexRequest(session, id: 2, method: "account/read", params: ["refreshToken": false]))
+                let account = try codexRequest(
+                    session, id: 2, method: "account/read", params: ["refreshToken": false])
+                let before = try Normalize.codexIdentity(account)
                 let usage = try codexRequest(session, id: 3, method: "account/rateLimits/read", params: [:])
                 let after = try Normalize.codexIdentity(
                     codexRequest(session, id: 4, method: "account/read", params: ["refreshToken": false]))
                 guard before == after else { throw UsageIssue.accountChanged }
-                let snapshot = try Normalize.codex(usage, identity: before)
+                let snapshot = try Normalize.codex(
+                    usage, identity: before,
+                    accountLabel: Normalize.label(
+                        (account["account"] as? [String: Any])?["email"], fallback: "Signed-in Codex account")
+                )
                 identity = snapshot.accountKey
                 return .success(snapshot, executable: executable, version: version)
             } else {
@@ -161,6 +169,9 @@ public enum ProviderReader {
             throw UsageIssue.unexpectedMessage
         }
         try process.send(["id": id, "method": method, "params": params])
+        return try codexResponse(process, id: id)
+    }
+    static func codexResponse(_ process: LineProcess, id: Int) throws -> [String: Any] {
         while true {
             let message = try process.json()
             if message["method"] != nil && message["id"] != nil { throw UsageIssue.unexpectedMessage }

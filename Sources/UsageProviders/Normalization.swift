@@ -27,7 +27,7 @@ public enum Normalize {
         guard let account = response["account"] as? [String: Any] else { throw UsageIssue.signIn }
         guard account["type"] as? String == "chatgpt" else { throw UsageIssue.subscriptionRequired }
         guard let email = account["email"] as? String, !email.isEmpty else { throw UsageIssue.unavailable }
-        return fingerprint(["codex", email, account["planType"] as? String ?? ""])
+        return fingerprint(["codex", email])
     }
     public static func claudeIdentity(_ auth: [String: Any]) throws -> String {
         guard auth["loggedIn"] as? Bool == true else { throw UsageIssue.signIn }
@@ -38,7 +38,9 @@ public enum Normalize {
             "claude", email, auth["orgId"] as? String ?? "", auth["subscriptionType"] as? String ?? "",
         ])
     }
-    public static func codex(_ document: [String: Any], identity: String, now: Date = Date()) throws
+    public static func codex(
+        _ document: [String: Any], identity: String, now: Date = Date(), accountLabel: String? = nil
+    ) throws
         -> UsageSnapshot
     {
         var buckets = document["rateLimitsByLimitId"] as? [String: [String: Any]] ?? [:]
@@ -69,12 +71,28 @@ public enum Normalize {
         guard !meters.isEmpty else { throw UsageIssue.unavailable }
         let credits = (document["rateLimitResetCredits"] as? [String: Any]).flatMap {
             number($0["availableCount"])
-        }.flatMap { $0 >= 0 && $0 < 100_000 ? Int($0) : nil }
+        }.flatMap { $0 >= 0 && $0 < 100_000 && $0.rounded() == $0 ? Int($0) : nil }
+        var creditIDs = Set<String>()
+        let details =
+            ((document["rateLimitResetCredits"] as? [String: Any])?["credits"] as? [[String: Any]] ?? [])
+            .compactMap { row -> ResetCredit? in
+                guard let id = row["id"] as? String, !id.isEmpty, id.count <= 512,
+                    row["status"] as? String == "available", row["resetType"] as? String == "codexRateLimits",
+                    creditIDs.insert(id).inserted
+                else { return nil }
+                let expiry = number(row["expiresAt"]).flatMap {
+                    (1...32_503_680_000).contains($0) ? Date(timeIntervalSince1970: $0) : nil
+                }
+                return ResetCredit(
+                    id: id, title: label(row["title"], fallback: "Codex usage reset"),
+                    description: (row["description"] as? String).map { label($0, fallback: "") },
+                    expiresAt: expiry)
+            }
         // The usage response provides account/workspace association beyond account/read.
         let accountKey = fingerprint([identity, document["accountId"] as? String ?? ""])
         return UsageSnapshot(
             provider: .codex, accountKey: accountKey, allowances: unique(meters), checkedAt: now,
-            resetCredits: credits)
+            resetCredits: credits, resetDetails: details, accountLabel: accountLabel)
     }
     public static func claude(_ document: [String: Any], identity: String, now: Date = Date()) throws
         -> UsageSnapshot
