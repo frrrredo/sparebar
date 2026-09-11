@@ -262,6 +262,7 @@ struct AllowanceRow: View {
                 Text("Checked \(checked.formatted(date: .omitted, time: .shortened))")
                     .font(.system(size: 11)).foregroundStyle(.secondary)
             }
+            if provider == .codex { SpareReserve(resets: store.resets) }
         }
         .padding(10).background(
             store.current == provider ? Color.primary.opacity(0.055) : .clear,
@@ -290,7 +291,9 @@ struct PopoverContent: View {
     @State private var showingNotes = false
     var body: some View {
         Group {
-            if showingNotes {
+            if let confirmation = store.resets.confirmation {
+                SpareConfirmation(resets: store.resets, context: confirmation)
+            } else if showingNotes {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Button {
@@ -336,6 +339,7 @@ struct PopoverContent: View {
                 ServiceHealthPanel(store: store)
                 Divider().padding(.bottom, 10)
             }
+            SparePrompt(resets: store.resets)
             HStack {
                 Text("Allowance")
                 Spacer()

@@ -14,6 +14,7 @@ import UsageProviders
     @Published var now = Date()
     @Published var demo: Bool
     let health: ServiceHealthController
+    let resets: ResetController
     var statusChanged: (() -> Void)?
     private let defaults: UserDefaults
     private let read: Read
@@ -29,6 +30,7 @@ import UsageProviders
 
     init(
         demo: Bool, defaults: UserDefaults = .standard,
+        resets: ResetController? = nil,
         read: @escaping Read = { await ProviderReader.read($0, options: $1) },
         pause: @escaping @Sendable (TimeInterval) async throws -> Void = {
             try await Task.sleep(for: .seconds($0))
@@ -39,6 +41,7 @@ import UsageProviders
         self.read = read
         self.pause = pause
         self.health = ServiceHealthController(demo: demo, defaults: defaults)
+        self.resets = resets ?? ResetController(demo: demo)
         let installed =
             demo
             ? Provider.allCases
@@ -74,6 +77,25 @@ import UsageProviders
             self.now = Date()
             self.statusChanged?()
         }
+        self.resets.onChange = { [weak self] in self?.objectWillChange.send() }
+        self.resets.onFinish = { [weak self] in self?.refresh(.codex) }
+        syncResets()
+    }
+    private func syncResets() {
+        guard enabled(.codex), let snapshot = states[.codex]?.snapshot else {
+            resets.update(nil)
+            return
+        }
+        let path = preference("path.codex")
+        let root = preference("root.codex")
+        resets.update(
+            ResetContext(
+                snapshot: snapshot, meter: meter(.codex), current: valid(.codex),
+                checking: states[.codex]?.checking == true,
+                options: ConnectionOptions(executable: path, configDirectory: root),
+                configuration: Normalize.fingerprint([
+                    path, root, states[.codex]?.executable ?? "", states[.codex]?.version ?? "",
+                ])))
     }
     var providers: [Provider] { Provider.allCases.filter { defaults.bool(forKey: "enabled.\($0.rawValue)") } }
     var current: Provider? { providers.isEmpty ? nil : providers[currentIndex % providers.count] }
@@ -103,6 +125,7 @@ import UsageProviders
     func set(_ value: Any, for key: String) {
         objectWillChange.send()
         defaults.set(value, forKey: key)
+        syncResets()
         currentIndex = min(currentIndex, max(0, providers.count - 1))
         startRotation()
         statusChanged?()
@@ -187,6 +210,7 @@ import UsageProviders
         guard !sleeping, !stopping else { return }
         now = Date()
         // Reconcile against wall time even if the one-shot timer was lost or delayed.
+        syncResets()
         for provider in providers where !demo && reads[provider] == nil && due(provider) <= now {
             logger.notice("Recovering overdue allowance refresh for \(provider.rawValue, privacy: .public)")
             refresh(provider)
@@ -207,7 +231,9 @@ import UsageProviders
     func refreshAll() { for provider in providers { refresh(provider) } }
     func refresh(_ provider: Provider) {
         guard !demo, !sleeping, !stopping, enabled(provider), reads[provider] == nil else { return }
+        guard provider != .codex || !resets.busy else { return }
         states[provider]?.checking = true
+        syncResets()
         now = Date()
         statusChanged?()
         let revision = revisions[provider, default: 0]
@@ -225,6 +251,7 @@ import UsageProviders
                 self.now = Date()
                 self.statusChanged?()
             }
+            self.syncResets()
             if revision != self.revisions[provider, default: 0] { self.refresh(provider) }
             self.schedule()
         }
@@ -236,6 +263,7 @@ import UsageProviders
             root.trimmingCharacters(in: .whitespacesAndNewlines), forKey: "root.\(provider.rawValue)")
         revisions[provider, default: 0] += 1
         states[provider] = .init()
+        syncResets()
         if let read = reads[provider] { read.cancel() } else { refresh(provider) }
         statusChanged?()
     }
@@ -251,7 +279,7 @@ import UsageProviders
     private func schedule() {
         refreshTimer?.cancel()
         guard !demo, !sleeping, !stopping,
-            let next = providers.filter({ reads[$0] == nil }).map(due).min()
+            let next = providers.filter({ reads[$0] == nil && ($0 != .codex || !resets.busy) }).map(due).min()
         else { return }
         let pause = self.pause
         refreshTimer = Task { [weak self] in
@@ -265,6 +293,7 @@ import UsageProviders
     }
     func sleep() {
         sleeping = true
+        resets.sleep()
         health.sleep()
         refreshTimer?.cancel()
         rotationTimer?.cancel()
@@ -286,6 +315,7 @@ import UsageProviders
     }
     func shutdown() async {
         stopping = true
+        await resets.shutdown()
         await health.shutdown()
         refreshTimer?.cancel()
         rotationTimer?.cancel()

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.7
+
+- Show Codex usage resets as a horizontal reserve of spare batteries. Available spares stay on the left, with confirmed resets used in Sparebar on this Mac on the right.
+- Offer "Use a spare" at 10% remaining or less, when a fresh reading reports an available reset. Confirm the account and reset before spending one; healthy and empty reserves stay quiet.
+- Save each reset request before sending it, reuse the same request on uncertain retries, and re-read the provider's actual allowance and reserve afterward. Keep pending requests and account-specific receipts across restarts without storing credentials.
+- Show unsupported, missing, empty, and unconfirmed reserve states explicitly. Reset support depends on the installed Codex CLI and account. Real redemption is an explicit user action.
+
 ## 0.1.6
 
 - Recover stalled automatic allowance checks so percentages do not stay unavailable until a manual refresh.
